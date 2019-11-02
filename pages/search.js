@@ -1,0 +1,33 @@
+// TODO 
+
+import { ThemeContext } from '../components/theme-context.js'
+
+import { useContext } from 'react'
+
+import Head from 'next/head'
+
+function Button ({ children }) {
+    const theme = useContext(ThemeContext)
+    
+    return <button>
+        <style jsx>{`
+            button {
+                background: ${theme.background};
+                color: ${theme.foreground};
+            }
+        `}</style>
+        { children }
+    </button>
+}
+
+
+export default function () {
+    return <div>
+        <Head>
+            <title key="page-title">Search | App</title>
+            <meta key="page-description" name="Description" content="Search | App"/>
+        </Head>
+
+        <Button>Search</Button>
+    </div>
+}
