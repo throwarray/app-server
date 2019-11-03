@@ -76,12 +76,15 @@ function useProviderMetas (prv, query, pathname = '/meta.json', key = JSON.strin
         if (controller) controller.abort()
 
         const providers = prv
+
+        if (!providers.length) throw new Error('Invalid query')
+
         const results = await new Promise(function (resolve, reject) {
             let results = {}
 
             if (!Array.isArray(providers) || !providers.length) {
                 setState({})
-                resolve()
+                reject()
                 return
             }
 
@@ -103,6 +106,8 @@ function useProviderMetas (prv, query, pathname = '/meta.json', key = JSON.strin
             })
         })
 
+        if (!results) throw new Error('Invalid response')
+
         return results
     }, {
         revalidateOnFocus: false,
@@ -116,7 +121,7 @@ function useProviderMetas (prv, query, pathname = '/meta.json', key = JSON.strin
         }
     }, [controller])
 
-    const loading = !error && completeResults === void 0
+    const loading = prv && prv.length && !error && completeResults === void 0
 
     return {
         loading,

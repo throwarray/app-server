@@ -213,9 +213,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
         else return []
     }, [shouldUseTmdb])
         
-    const { loading, results: resultsFromTmdb } = useProviderMetas(tasks, query, '/meta.json', `#meta|tmdb|${query.type}|${query.id}|${query.season}|${userUpdatedAt}`)    
-    
-    const tmdb_loading = !resultsFromTmdb || (loading && tasks.length)
+    const { loading: tmdb_loading, results: resultsFromTmdb } = useProviderMetas(tasks, query, '/meta.json', `#meta|tmdb|${query.type}|${query.id}|${query.season}|${userUpdatedAt}`)
     const tmdbReflected = (resultsFromTmdb || {})['tmdb']
     const tmdb_meta = tmdbReflected && tmdbReflected.status === 'fulfilled' && tmdbReflected.value
     const tmdb_error = tmdbReflected && tmdbReflected.status === 'rejected'
@@ -333,12 +331,12 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
     const { results: metasByProvider } = useProviderMetas(providers, query, '/meta.json', `#meta|all|${query.type}|${query.id}|${query.season}|${userUpdatedAt}`)
     const meta_fallback = useMemo(function () { return metaQueryItem(tmdb_meta || query) }, [tmdb_meta, query]) // fallback to partial info from tmdb or query 
     const results = useMemo(function () {
-        if (!tmdb_meta && !tmdb_error) return metasByProvider || {}
+        if (!tmdb_meta) return metasByProvider || {}
         
         const appended = { status: tmdb_error? 'rejected' : 'fulfilled', value: tmdb_meta }
         
         if (metasByProvider) {
-            metasByProvider['tmdb'] = appended
+            metasByProvider['tmdb'] = metasByProvider['tmdb'] || appended
             
             return metasByProvider
         } else {
