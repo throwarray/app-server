@@ -29,7 +29,6 @@ module.exports = {
 		// "indent": [ "error", "tab" ],
 		"no-unused-vars": [ "warn", { "ignoreRestSiblings": true }],
 		"no-console": [ 0 ],
-		"linebreak-style": [ "error", "windows" ],
 		"quotes": [ "error", "single" ],
 		"semi": [ "warn", "never" ]
 	}

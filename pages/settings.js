@@ -38,10 +38,15 @@ function Page ({ providers }) {
     const [state, setState] = useState({})
     
     const formRef = useRef()
+        
+    const id_pattern = '^\\w+\\b$'
+    const ids_pattern = '^(?:\\w+(?:,\\w+)?)+$'
     const submitForm = useCallback(function (evt) {
         evt.preventDefault()
-        
-        const inputs = Array.prototype.slice.call(formRef.current.querySelectorAll('input'))
+
+        const form = evt.target
+        const action = form.getAttribute('action')
+        const inputs = Array.prototype.slice.call(form.querySelectorAll('input'))
         const form_map = Object.create(null)
         
         inputs.forEach(function (input) {
@@ -49,8 +54,10 @@ function Page ({ providers }) {
             
             form_map[name] = input.value
         })
-        
-        fetch('/api/providers/add', {
+
+        form.reset()
+ 
+        if (action) fetch(action, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formBody(form_map),
             method: 'POST'
@@ -62,10 +69,10 @@ function Page ({ providers }) {
             const provider = providers.find(provider=> { 
                 return provider.id === state.modify 
             })
-
+    
             if (provider) {
                 const { streams, meta, collections } = provider
-
+    
                 return {
                     id: provider.id,
                     title: provider.title,
@@ -79,9 +86,6 @@ function Page ({ providers }) {
 
         return {}
     }, [providers, state.modify])
-    
-    const id_pattern = '^\\w+\\b$'
-    const ids_pattern = '^(?:\\w+(?:,\\w+)?)+$'
 
     return <div>
     <style>{`
@@ -114,10 +118,10 @@ function Page ({ providers }) {
                         <div>{provider.id}</div>
                         <div style={{ flex: 1 }}></div>
                         
-                        <li className="material-icons" onClick={()=> {
-                            formRef.current.scrollIntoView()
-
+                        <li className="material-icons" onClick={()=> {                           
                             setState(state => { return { ...state, modify: provider.id } })
+
+                            formRef.current.scrollIntoView()
                         }}>settings</li>
 
                         <form method="POST" action="/api/providers/remove" onSubmit={submitForm}>

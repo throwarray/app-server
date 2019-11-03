@@ -61,7 +61,7 @@ router.use('/api/providers/remove', withFormBody, function (req, res) {
         else res.json({ type: 'success', value: 'Success' })
     }
 
-    if (!body || !req.isAuthenticated()) {
+    if (!body || !body.id || !req.isAuthenticated()) {
         done(true)
         return
     }
@@ -74,6 +74,7 @@ router.use('/api/providers/remove', withFormBody, function (req, res) {
 
 module.exports = async function (/*cfg*/) {
     router.use('/api/providers/add', withFormBody, function (req, res) {
+        const userId = req.user && req.user.user_id
         const body = req.body
         const providerCap = 25
         
@@ -82,7 +83,7 @@ module.exports = async function (/*cfg*/) {
             else res.json({ type: 'success', value: 'Success' })
         }
 
-        if (!body || !req.isAuthenticated()) {
+        if (!body || !body.id || !userId || !req.isAuthenticated()) {
             done(new Error('Failed to handle request.'))
             return
         }
@@ -92,13 +93,17 @@ module.exports = async function (/*cfg*/) {
         if (typeof body.meta === 'string') body.meta = body.meta.split(',')
 
         // Add or modify existing provider
-        Provider.count({ user: req.user.user_id }, function (err, count) {
-            if (err) done(new Error('Failed to handle request.'))
-            else if (count >= providerCap) done(new Error('Provider limit reached.'))
-            else  new Provider({ ...body, user: req.user.user_id  }).validate(function (err) {
+        Provider.count({ user: userId }, function (err, count) {
+            if (err) 
+                done(new Error('Failed to handle request.'))
+
+            else if (count >= providerCap) 
+                done(new Error('Provider limit reached.'))
+            
+            else  new Provider({ ...body, user: userId  }).validate(function (err) {
                 if (!err) Provider.updateOne(
-                    { user: req.user.user_id, id: body.id }, 
-                    { ...body, user: req.user.user_id }, 
+                    { user: userId, id: body.id }, 
+                    { ...body, user: userId }, 
                     { upsert: true }, 
                     done
                 )
