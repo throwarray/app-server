@@ -14,14 +14,17 @@ const wrapProvider = require('./providers/wrap-provider')
 
 const withFormBody = bodyParser.urlencoded({ extended: false })
 
-const providerId = required => { 
+
+const providerId = (required, wildcard) => { 
+    const reg = wildcard? /^(?:(?:\w+\b)|\*)$/ : /^\w+\b$/
+
     return {
         type: String,
         required: !!required,
         maxLength: 16, 
         minLength: 1,
         validate: {
-            validator: v => /^\w+\b$/.test(v),
+            validator: v => reg.test(v),
             message: props => `${props.value} is not a valid provider id!`
         },
     }
@@ -33,7 +36,7 @@ function providerIdCap(val) {
 
 const arrayOfProviderId =()=> { 
     return {
-        type: [providerId()],
+        type: [providerId(false, true)],
         validate: [providerIdCap, '{PATH} exceeds the limit of allowed providers']
     }
 }

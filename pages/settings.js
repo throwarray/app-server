@@ -40,7 +40,7 @@ function Page ({ providers }) {
     const formRef = useRef()
         
     const id_pattern = '^\\w+\\b$'
-    const ids_pattern = '^(?:\\w+(?:,\\w+)?)+$'
+    const ids_pattern = '^(?:(?:\\w+(?:,\\w+)?)+|\\*)$'
     const submitForm = useCallback(function (evt) {
         evt.preventDefault()
 
