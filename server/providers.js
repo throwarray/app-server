@@ -64,12 +64,12 @@ router.use('/api/providers/remove', withFormBody, function (req, res) {
         else res.json({ type: 'success', value: 'Success' })
     }
 
-    if (!body || !body.id || !req.isAuthenticated()) {
+    if (!body || typeof body.id !== 'string' || !req.isAuthenticated()) {
         done(true)
         return
     }
 
-    Provider.remove({
+    Provider.deleteOne({
         user: req.user.user_id,
         id: body.id
     }, done)
@@ -86,7 +86,7 @@ module.exports = async function (/*cfg*/) {
             else res.json({ type: 'success', value: 'Success' })
         }
 
-        if (!body || !body.id || !userId || !req.isAuthenticated()) {
+        if (!body || typeof body.id !== 'string' || !userId || !req.isAuthenticated()) {
             done(new Error('Failed to handle request.'))
             return
         }
@@ -96,7 +96,7 @@ module.exports = async function (/*cfg*/) {
         if (typeof body.meta === 'string') body.meta = body.meta.split(',')
 
         // Add or modify existing provider
-        Provider.count({ user: userId }, function (err, count) {
+        Provider.countDocuments({ user: userId }, function (err, count) {
             if (err) 
                 done(new Error('Failed to handle request.'))
 
