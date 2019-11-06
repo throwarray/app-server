@@ -12,29 +12,13 @@ import { Spinner } from '../../../components/Layout'
 
 import { serverRoute } from '../../../components/fetch'
 
-import { filterProviders, metaQueryItem } from '../../../components/utils'
+import { parseIdPrefix, filterProviders, metaQueryItem } from '../../../components/utils'
 
-import { keySystems, matchedMime, useProviderMetas, useProviderStreams } from '../../../components/meta'
+import { keySystems, matchedMime, useProviderMetas, useProviderStreams, useFilteredProviders } from '../../../components/meta'
 
 // import 'video.js/dist/video-js.min.css' // breaks routing in dev?
 
 const Video = dynamic(() => import('../../../components/VideoJs'), { ssr: false })
-
-function parseIdPrefix (id) { return (id || '').split('-')[0] } // TODO move to common utils
-
-function useHandlesId (userProviders, metaId, pathname = 'streams') {
-    const arr = useMemo(function () {
-        if (metaId) {
-            const prefix = parseIdPrefix(metaId)
-            const streamProviders = filterProviders(prefix, userProviders, pathname)
-
-            return [streamProviders && !!streamProviders.length, prefix, streamProviders]
-        } else return []
-    }, [userProviders, metaId, pathname])
-
-    return arr // [handlesPrefix, prefix, providers]
-}
-
 
 function playVideoJs (player, fileIn) {
     if (!player) return
@@ -127,6 +111,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
     const routerQuery = router.query
     const query = useMemo(function () { return metaQueryItem(routerQuery) }, [routerQuery])
     const queryId = query.id
+    const queryType = query.type
     const shouldUseTmdb = routerQuery.tmdb_id !== 'false' && routerQuery.tmdb_id !== false
     
     // Filter providers that handle the query id
@@ -135,14 +120,17 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
         const metaProviders = filterProviders(prefix, userProviders, 'meta').filter(({ id }) => id && id !== 'tmdb')
         const pref = metaProviders.find(provider => provider && provider.id === prefix)
         const tmdb = shouldUseTmdb && { id: 'tmdb' }
-        const selected = tmdb || pref || metaProviders[0]
+        const selected = queryType === 'movie' ?
+            pref || tmdb || metaProviders[0] :
+            tmdb || pref || metaProviders[0]
+    
         const selectedId = selected && selected.id
     
         console.log('getMetaProviders', metaProviders)
         console.log('should use tmdb meta', shouldUseTmdb)
 
         return [metaProviders, selectedId]
-    }, [userProviders, queryId, shouldUseTmdb])
+    }, [userProviders, queryType, queryId, shouldUseTmdb])
 
     // Opt out of automatic TMDb meta
     // Initialize state and actions
@@ -179,25 +167,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
             meta: srcpath 
         }) 
     }
-
-    const [streamProviders, streamQuery] = useMemo(function () {
-        if (!playerSrc || !invokeStreamHandlers) return [[], {}]
-
-        const query = metaQueryItem(playerSrc)
-        const streamId = query.id
-
-        if (!Array.isArray(userProviders) || !userProviders.length || streamId === void 0) return []
-
-        const prefix = parseIdPrefix(streamId)
-        const streamProviders = filterProviders(prefix, userProviders, 'streams')
-
-        console.log('invokeStreamProviders', streamProviders, query)
-
-        return [streamProviders, query]
-    }, [playerSrc, invokeStreamHandlers, userProviders])
-
-    const { streams, loadingStreams } = useProviderStreams(streamProviders, streamQuery, `#streams|all|${streamQuery.type}|${streamQuery.id}|${streamQuery.season}|${userUpdatedAt}`)
-
+ 
     // Fetch TMDb meta
     const tasks = useMemo(function () {
         if (shouldUseTmdb) return [ // just pass an empty task queue otherwise
@@ -212,14 +182,16 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
         ]
         else return []
     }, [shouldUseTmdb])
-        
-    const { loading: tmdb_loading, results: resultsFromTmdb } = useProviderMetas(tasks, query, '/meta.json', `#meta|tmdb|${query.type}|${query.id}|${query.season}|${userUpdatedAt}`)
+    
+    const { loading: tmdb_loading, results: resultsFromTmdb } = useProviderMetas(tasks, query, userUpdatedAt, 'tmdb')
     const tmdbReflected = (resultsFromTmdb || {})['tmdb']
     const tmdb_meta = tmdbReflected && tmdbReflected.status === 'fulfilled' && tmdbReflected.value
     const tmdb_error = tmdbReflected && tmdbReflected.status === 'rejected'
-
+    
     // Handle player ready
     const { setPlayer } = actions
+    const shouldntInvokeStreamHandlers = !playerSrc || !invokeStreamHandlers
+
     const onPlayerReady = useCallback(function (err, player) { 
         if (player) { 
             player.fluid(true)
@@ -227,9 +199,20 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
         }
     }, [setPlayer])
     
+    const {
+        streamProviders,
+        streams,
+        loadingStreams
+    } = useProviderStreams(
+        shouldntInvokeStreamHandlers? []: userProviders, 
+        shouldntInvokeStreamHandlers? {}: playerSrc, 
+        userUpdatedAt
+    )
+
+    
     const childProps = { season, actions, player, query, router, userProviders, metas }
     
-    console.log('render player wrapper')
+    console.log('[render]', metas)
 
     // Render the page
     return <div>
@@ -281,8 +264,6 @@ function Streams ({ streams, streamProviders, player, /* loadingStreams,  action
             const providerStreams = reflected && reflected.status == 'fulfilled' && reflected.value
             // const rejected = reflected && reflected.status === 'rejected'
 
-            console.log('streams', providerStreams)
-
             return <div key={provider.id}>
                 <h3>{provider.id}</h3>
                 <ul>
@@ -307,13 +288,11 @@ function Streams ({ streams, streamProviders, player, /* loadingStreams,  action
 }
 
 function Meta ({ player, tmdb_meta, query, providers, actions, selected, userProviders, season, tmdb_error, userUpdatedAt }) {
-    console.log('[render] Meta', selected, season)
+    console.log('[render] Meta', selected, season || 1)
 
     const { setSeason, setSelected, setResults } = actions
 
     const handleChange = useCallback(function (evt) { // handle meta provider change
-        console.log('select meta provider', evt.target.value)
-        
         setSelected(evt.target.value)
     }, [setSelected])
 
@@ -328,7 +307,7 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
     }, [setSeason, query])
 
     // fetch metas
-    const { results: metasByProvider } = useProviderMetas(providers, query, '/meta.json', `#meta|all|${query.type}|${query.id}|${query.season}|${userUpdatedAt}`)
+    const { results: metasByProvider } = useProviderMetas(providers, query, userUpdatedAt, 'all')
     const meta_fallback = useMemo(function () { return metaQueryItem(tmdb_meta || query) }, [tmdb_meta, query]) // fallback to partial info from tmdb or query 
     const results = useMemo(function () {
         if (!tmdb_meta) return metasByProvider || {}
@@ -378,7 +357,7 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
         }
     }
 
-
+    const { prefix, handlesPrefix } = useFilteredProviders(providers, meta, 'streams')
     const trailer = meta.trailer
     const playDirect = meta.src || meta.url || meta.file
 
@@ -430,12 +409,16 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
                         </button> || null
                     }
                     {   // Non series or has direct link
-                        (playDirect || meta.type === 'video' || meta.type === 'movie') && <button title="Watch now" role="button" aria-label="Watch now" style={msgStyles} title={ playDirect || meta.id } onClick={function () {
-                            actions.setSource(meta)
-                        }}>
-                        Watch
-                        </button> || null
+                        (playDirect || meta.type === 'video' || meta.type === 'movie') && 
+                            <button title="Watch now" role="button" aria-label="Watch now" style={msgStyles} title={ playDirect || meta.id } onClick={function () {
+                                actions.setSource(meta)
+                            }}>
+                            Watch
+                            </button> || null
                     }
+                    { prefix && !handlesPrefix && <div style={{...msgStyles, padding: '0.15em' }}>
+                        No stream provider for { prefix }
+                    </div> || null }
                 </div>
             </div>
         </div>
@@ -566,7 +549,7 @@ function EpisodeMeta ({ series, episode, seasonNumber, episodeNumber, actions, u
 
 
     const meta = episode[selected]
-    const [handlesPrefix, prefix] = useHandlesId(userProviders, meta && meta.id)
+    const { prefix, handlesPrefix } = useFilteredProviders(userProviders, meta, 'streams')
 
     if (!meta || selected === void 0) return null // Error
 

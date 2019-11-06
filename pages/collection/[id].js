@@ -1,12 +1,10 @@
-import useSWR from 'swr'
-
 import { Collection, Carousel } from '../../components/carousel'
-
-import { fetchCollection, metaQueryItem } from '../../components/utils'
 
 import { Message, Spinner } from '../../components/Layout'
 
 import Head from 'next/head'
+
+import { useProviderCollection } from '../../components/meta'
 
 export default function (props) {
     const { router } = props
@@ -27,22 +25,7 @@ function Page (props) {
     const { query, providers, userUpdatedAt } = props
     const widthMax = 200
     const heightMax = 300
-    const urlCacheKey = `#collection|${query.type}|${query.id}|${query.page}|${userUpdatedAt}`
-    const { error, data: collection } = useSWR(urlCacheKey, async function () {
-        if (Array.isArray(providers)) 
-        {
-            const filtered_query = metaQueryItem(query)
-
-            const collection = await fetchCollection(filtered_query, providers)
-
-            return collection
-        }
-    }, {
-        revalidateOnFocus: false,
-        refreshWhenHidden: false,
-        shouldRetryOnError: false 
-    })
-
+    const { error, data: collection } = useProviderCollection(providers, query, userUpdatedAt)
     const fetching = !error && collection == void 0
 
     if (fetching) return <Message><Spinner/></Message>

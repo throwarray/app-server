@@ -1,5 +1,3 @@
-import useSWR from 'swr'
-
 import List from 'react-list'
 
 import LazyLoad from 'react-lazy-load'
@@ -10,7 +8,7 @@ import { metaQueryItem } from './utils.js'
 
 import Link from 'next/link'
 
-import { fetchCollection } from './utils'
+import { useProviderCollection } from './meta'
 
 function CollectionLink ({ item, children }) {
     const { id, type, ...query } = metaQueryItem(item)
@@ -143,23 +141,7 @@ export function Carousel (props) {
 // Don't fetch the items until the carousel scrolls into view
 function CarouselMounted ({ userUpdatedAt, query, providers, width, id, title, height, componentRef }) {
     const listRef = useRef()
-    
-    const urlCacheKey = `#collection|${query.type}|${query.id}|${query.page}|${userUpdatedAt}`
-
-    const { error, data: collection = { ...query } } = useSWR(urlCacheKey, async function () {
-        if (Array.isArray(providers)) {
-            const filtered_query = metaQueryItem(query)
-
-            const collection = await fetchCollection(filtered_query, providers)
-
-            return collection
-        }
-    }, {
-        revalidateOnFocus: false,
-        refreshWhenHidden: false,
-        shouldRetryOnError: false 
-    })
-
+    const { error, data: collection = { ...query } } = useProviderCollection(providers, query, userUpdatedAt)
     const loading = !error && collection == void 0
     const items = collection.items || [{}]
 

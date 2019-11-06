@@ -62,8 +62,6 @@ function useUser (props) {
     
         return user
     }, {
-        // revalidateOnFocus: false,
-        // refreshWhenHidden: false,
         shouldRetryOnError: false,
         ...props
     })

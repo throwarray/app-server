@@ -1,76 +1,41 @@
-import { fetch, formatURL, reflect, combineURLS, serverRoute } from './fetch'
-
-import AbortController from 'abort-controller'
-
-const hasOwn = Object.prototype.hasOwnProperty
-
-async function fetchCollection (query, providersArr = []) {
-    const id = query.id
-    const prefix = (query.id || '').split('-')[0]
-    const providers = [...providersArr, {}]
-        
-    // TODO prevent adding system provider
-    let prv = filterProviders(prefix, providers, 'collections').filter(function ({ id }) { return id !== 'system' }) 
-
-    // Add system provider
-    if (!id || prefix === 'system') {
-        prv.push({
-            title: 'System',
-            id: 'system',
-            url: serverRoute('/providers/system')
-        })
-    }
-    
-    console.log('[fetch collection]', query)
-
-    const controller = new AbortController()
-
-    const responses = await Promise.race(
-        prv.map(({ url })=> reflect(
-            fetch(formatURL({
-                pathname: combineURLS(url, '/collection.json'),
-                query
-            }), {
-                signal: controller.signal
-            })
-        ))
-    )
-
-    const collection = await responses.value.json()
-    
-    Object.assign(collection, {
-        id: query.id,
-        title: query.title,
-        paginated: query.paginated ||  query.type !== 'collection'
-    })
-
-    controller.abort()
-    
-    return collection
-}
-
+import { serverRoute } from './fetch'
 
 // Acceptable meta query parameters
+const acceptableParameters = [
+    'id', 'title', 'type', 'provider', 
+    'season', 'episode', 'year', 
+    'season', 'page', 'tmdb_id', 'tmdb', 'region'
+]
+
 function metaQueryItem (item) {
     const query = {}
 
-    ;[
-        'id', 'title', 'type', 'provider', 'season', 'episode', 'year', 'season', 'page', 'tmdb_id', 'tmdb', 'region'
-    ].forEach(function (propName) {
+    acceptableParameters.forEach(function (propName) {
         const val = item[propName]
 
-        if (/*val || val === 0*/ val !== void 0)  query[propName] = val
+        if (val !== void 0)  query[propName] = val
     })
 
     return query
 }
 
-
-function filterProviders (prefix, providersArr, prop) {
+// Filter providers by handles prefix
+function filterProviders (prefixStr, providersArr, prop) {
+    const prefix = parseIdPrefix(prefixStr)
     const allowed = ['streams', 'meta', 'collections', 'config'].includes(prop)
     const hasOwn = Object.prototype.hasOwnProperty
 
     if (!allowed) return []
+
+    // Add system provider
+    if (!prefix || prefix === 'system') {
+        return [{
+            title: 'System',
+            id: 'system',
+            url: serverRoute('/providers/system'),
+            collections: ['system']
+        }]
+    }
     
     const providers = providersArr.filter(function ({ id }) {
         return id !== 'tmdb'
@@ -97,9 +62,12 @@ function filterProviders (prefix, providersArr, prop) {
     return matched_providers
 }
 
+function parseIdPrefix (id) {
+    return (id || '').split('-')[0]
+}
+
 export {
-    fetchCollection,
+    parseIdPrefix,
     filterProviders,
-    hasOwn,
     metaQueryItem
 }

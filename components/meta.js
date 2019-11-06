@@ -2,10 +2,15 @@ import { parallelLimit } from 'async'
 
 import { fetch, formatURL, combineURLS } from './fetch'
 
-import { useState, useEffect } from 'react'
+import { parseIdPrefix, metaQueryItem, filterProviders } from './utils'
+
+import { useState, useEffect, useMemo } from 'react'
 
 import useSWR from 'swr'
 
+import { scan } from '@commercial/bourne'
+
+// Fetch provider data
 function fetchProviderMetas (query, providers, handleOne = (d)=> d, pathname = '/meta.json', cb) {
     let deferred, count = 0
 
@@ -24,16 +29,23 @@ function fetchProviderMetas (query, providers, handleOne = (d)=> d, pathname = '
     signal.addEventListener('abort', onAbort)
 
     function fetchMetaProvider (provider, signal) {
-        console.log('fetch provider meta', { pathname: combineURLS(provider.url, pathname), query })
-
-        return Promise.resolve(fetch(formatURL({ pathname: combineURLS(provider.url, pathname), query }), { signal })
-            .then(response => response.json())
+        return Promise.resolve(fetch(formatURL({ pathname: combineURLS(provider.url, pathname), query: metaQueryItem(query) }), { signal })
+            .then(response => {
+                if (response.status >= 400 || response.status < 200) 
+                    throw new Error('Invalid response')
+                else
+                    return response.json()
+            })
             .then(function (meta) {
                 meta.provider = provider.id
-    
+
+                scan(meta, { protoAction: 'remove' })
+
                 return meta
             })
-            .then(function (value) { return { status: 'fulfilled', value } }, function (error) {
+            .then(function (value) { 
+                return { status: 'fulfilled', value } 
+            }, function (error) {
                 return { status: 'rejected', value: error }
             }))
     }
@@ -69,11 +81,55 @@ function fetchProviderMetas (query, providers, handleOne = (d)=> d, pathname = '
     return controller
 }
 
-function useProviderMetas (prv, query, pathname = '/meta.json', key = JSON.stringify(query)) {
+// Fetch collection
+async function fetchCollection (query, providersArr = []) {
+    const id = query.id
+    const prefix = (query.id || '').split('-')[0]
+    const providers = [...providersArr, {}]
+    const prv = filterProviders(prefix, providers, 'collections')
+
+    const collection = await new Promise(function (resolve, reject) {
+        let completed
+
+        const controller = fetchProviderMetas(
+            query, 
+            prv, 
+            d => {
+                if (d.status === 'fulfilled') {
+                    completed = d
+                    controller.abort()
+                }
+            },
+            '/collection.json', 
+            function () {
+                controller.abort()
+
+                if (!completed) {
+                    reject(new Error('Unhandled request'))
+                } else {
+                    resolve(completed.value)
+                }
+            }
+        )
+    })
+
+    if (collection) Object.assign(collection, {
+        id,
+        title: query.title,
+        paginated: query.paginated || query.type !== 'collection'
+    })
+
+    return collection
+}
+
+// Use fetch json
+function useProviderJSON (prv, query, pathname = '/meta.json', key = JSON.stringify(query)) {
     const [{ controller, results: partialResults }, setState] = useState({})
 
     const { error, data: completeResults } = useSWR(key, async function () {
         if (controller) controller.abort()
+
+        console.log(`[${pathname}]:${key}`, query, prv)
 
         const providers = prv
 
@@ -125,20 +181,72 @@ function useProviderMetas (prv, query, pathname = '/meta.json', key = JSON.strin
 
     return {
         loading,
-        results: error? void 0 : loading? partialResults : completeResults
+        results: error? void 0 : loading? partialResults : completeResults,
+        error,
+        key
     }
 }
 
-function useProviderStreams (streamProviders, query, key) {    
-    const { results, loading } = useProviderMetas(streamProviders, query, '/streams.json', key)
+// Use filtered providers for item id
+function useFilteredProviders (providers, query, pathtype) {
+    const mem = useMemo(function () {
+        const id = query && query.id
+        const prefix = parseIdPrefix(id)
+        const prv = filterProviders(prefix, providers, pathtype)
+        const handlesPrefix = Array.isArray(prv) && prv.length
+
+        return {
+            providers: prv,
+            prefix,
+            handlesPrefix
+        }
+    }, [providers, query, pathtype])
+
+    return mem
+}
+
+// Use metas for item id
+function useProviderMetas (providers, query, userUpdatedAt, key = 'all') {
+    const keyname = `#meta|${key}|${query.type}|${query.id}|${query.season || 1}|${userUpdatedAt}`
+
+    return useProviderJSON(providers, query, '/meta.json', keyname)
+}
+
+// Use streams for item id
+function useProviderStreams (providers, query, userUpdatedAt, key = 'all') {
+    const { providers: streamProviders } = useFilteredProviders(providers, query, 'streams')
+    const invalid = !query.id || !Array.isArray(streamProviders) || !streamProviders.length
+    const keyname = invalid? null : `#streams|${key}|${query.type}|${query.id}|${query.season}|${userUpdatedAt}` 
+    const { results, loading, error } = useProviderJSON(streamProviders, query, '/streams.json', keyname)
 
     return {
         streamProviders,
         streams: results,
-        loadingStreams: loading && streamProviders.length
+        loadingStreams: loading && streamProviders.length,
+        streamsError: error,
+        key: keyname
     }
 }
 
+// Use provider collection (-> first success)
+function useProviderCollection (providers, query, userUpdatedAt) {
+    const key = `#collection|${query.type}|${query.id}|${query.page}|${userUpdatedAt}`
+    const output = useSWR(key, async function () {
+        if (Array.isArray(providers)) {
+            const collection = await fetchCollection(query, providers)
+
+            return collection
+        }
+    }, {
+        revalidateOnFocus: false,
+        refreshWhenHidden: false,
+        shouldRetryOnError: false 
+    })
+
+    return { ...output, key }
+}
+
+// Allow mimetype short form
 function matchedMime (key) {
     if (typeof key === 'string') {
         const parts = key.split('/')
@@ -168,6 +276,7 @@ function matchedMime (key) {
     }
 }
 
+// DRM properties interop
 function keySystems (drm) {
     if (!drm) return
 
@@ -208,7 +317,10 @@ function keySystems (drm) {
 export {
     keySystems,
     matchedMime,
-    useProviderStreams,
+    useFilteredProviders,
     useProviderMetas,
-    fetchProviderMetas
+    useProviderStreams,
+    useProviderCollection,
+    fetchProviderMetas,
+    fetchCollection
 }
