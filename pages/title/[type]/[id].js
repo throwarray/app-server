@@ -109,9 +109,8 @@ const msgStyles = {
 export default function InitialMeta({ providers: userProviders, router, userUpdatedAt }) {    
     // Filter query parameters
     const routerQuery = router.query
-    const query = useMemo(function () { return metaQueryItem(routerQuery) }, [routerQuery])
-    const queryId = query.id
-    const queryType = query.type
+    const queryId = routerQuery.id
+    const queryType = routerQuery.type
     const shouldUseTmdb = routerQuery.tmdb_id !== 'false' && routerQuery.tmdb_id !== false
     
     // Filter providers that handle the query id
@@ -136,7 +135,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
     // Initialize state and actions
     const [{ player, selected, playerSrc, invokeStreamHandlers, season, metas }, dispatch] = useReducer(metaReducer, { 
         selected: defaultMetaProvider,
-        season: query.season
+        season: routerQuery.season
     })
     
     const actions = useMemo(function () {
@@ -148,26 +147,6 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
         }
     }, [dispatch])
 
-    actions.setSource = function (meta) {
-        if (!player) return
-
-        const { src, file, url } = meta
-        const srcpath = src || url || file
-
-        console.log('SET SOURCE', meta, srcpath)
-
-        if (srcpath) {
-
-            playVideoJs(player, meta)
-        }
-
-        dispatch({ 
-            type: 'setSource', 
-            payload: meta, 
-            meta: srcpath 
-        }) 
-    }
- 
     // Fetch TMDb meta
     const tasks = useMemo(function () {
         if (shouldUseTmdb) return [ // just pass an empty task queue otherwise
@@ -183,7 +162,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
         else return []
     }, [shouldUseTmdb])
     
-    const { loading: tmdb_loading, results: resultsFromTmdb } = useProviderMetas(tasks, query, userUpdatedAt, 'tmdb')
+    const { loading: tmdb_loading, results: resultsFromTmdb } = useProviderMetas(tasks, routerQuery, userUpdatedAt, 'tmdb')
     const tmdbReflected = (resultsFromTmdb || {})['tmdb']
     const tmdb_meta = tmdbReflected && tmdbReflected.status === 'fulfilled' && tmdbReflected.value
     const tmdb_error = tmdbReflected && tmdbReflected.status === 'rejected'
@@ -198,7 +177,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
             setPlayer(player) 
         }
     }, [setPlayer])
-    
+
     const {
         streamProviders,
         streams,
@@ -209,7 +188,36 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
         userUpdatedAt
     )
 
+    useMemo(()=> {
+        const tmdb_id = tmdb_meta && tmdb_meta.tmdb_id || void 0
+
+        actions.setSource = function (meta) {
+            if (!player) return
     
+            const { src, file, url } = meta
+            const srcpath = src || url || file
+    
+            console.log('SET SOURCE', meta, srcpath)
+    
+            if (srcpath) {
+                playVideoJs(player, meta)
+            }
+    
+            dispatch({ 
+                type: 'setSource', 
+                payload: { ...meta , tmdb_id }, 
+                meta: srcpath 
+            }) 
+        }
+    },[actions, player, tmdb_meta])
+
+    // Append tmdb id to query
+    const query = useMemo(function () { 
+        const tmdb_id = tmdb_meta && tmdb_meta.tmdb_id || void 0
+        
+        return metaQueryItem({ ...routerQuery, tmdb_id })
+    }, [routerQuery, tmdb_meta])
+
     const childProps = { season, actions, player, query, router, userProviders, metas }
     
     console.log('[render]', metas)
@@ -226,7 +234,10 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
 
         {/* Mount the player here because meta unmounts during season select */}
         <div style={{ display: playerSrc? 'initial': 'none', maxHeight: '80vh', height: '80vh' }} aria-hidden={(playerSrc? 'false' : 'true')}>
-            <Video onPlayerReady={onPlayerReady}></Video>
+            <div>
+                <h3>{ playerSrc && playerSrc.title}</h3>
+                <Video onPlayerReady={onPlayerReady}></Video>
+            </div>
             <Streams
                 {...childProps} 
                 streams={streams} 
@@ -403,19 +414,27 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
                     {
                         // Meta has trailer
                         trailer && <button title="Play trailer" role="button" aria-label="Play trailer" style={msgStyles} title={ trailer.src || trailer.url || trailer.file || trailer.id } onClick={function () {
-                            actions.setSource(trailer)
+                            actions.setSource({
+                                ...trailer, 
+                                title: trailer.title || meta.title
+                            })
                         }}>
                         Trailer
                         </button> || null
                     }
+
                     {   // Non series or has direct link
-                        (playDirect || meta.type === 'video' || meta.type === 'movie') && 
+                        prefix && handlesPrefix && (playDirect || meta.type === 'video' || meta.type === 'movie') && 
                             <button title="Watch now" role="button" aria-label="Watch now" style={msgStyles} title={ playDirect || meta.id } onClick={function () {
-                                actions.setSource(meta)
+                                actions.setSource({ 
+                                    ...meta ,
+                                    title: meta.title
+                                })
                             }}>
                             Watch
                             </button> || null
                     }
+                    
                     { prefix && !handlesPrefix && <div style={{...msgStyles, padding: '0.15em' }}>
                         No stream provider for { prefix }
                     </div> || null }
@@ -457,9 +476,6 @@ function SelectSeason ({ meta, value, handleSeasonSelect }) {
         })}
     </select> || null
 }
-
-
-
 
 function Seasons ({ meta, results, actions, player, userProviders }) {
     // Return a sorted array of episodes for current season
@@ -524,7 +540,6 @@ function Seasons ({ meta, results, actions, player, userProviders }) {
         </div>
     </div>
 }
-
 
 function EpisodeMeta ({ series, episode, seasonNumber, episodeNumber, actions, userProviders }) {
     const [selected, setSelected] = useState()    
@@ -624,24 +639,31 @@ function EpisodeMeta ({ series, episode, seasonNumber, episodeNumber, actions, u
             flex: '1',
             maxHeight: '240px',
             overflow: 'auto',
-            // maxWidth: '100%',
             width: 1024,
             maxWidth: '100%',
             scrollbarWidth: 'thin',
             scrollbarColor: 'black #333'
         }}>{ meta.description }</div>
 
-        <div style={{
-            display: 'flex',
-            // flex: '1'
-        }}>
-
+        <div style={{ display: 'flex' }}>
             { trailer && <button style={msgStyles} title={playTrailerLabelText} role="button" aria-label={playTrailerLabelText} style={msgStyles} onClick={function () {
-                actions.setSource(meta)
+                actions.setSource({ 
+                    ...trailer, 
+                    episode: episodeNumber, 
+                    season: seasonNumber,
+                    title: trailer.title || meta.title,
+                    series: series.title
+                })
             }}>Trailer</button> || null }
 
             { handlesPrefix && <button style={msgStyles} title={playLabelText} role="button" aria-label={playLabelText} style={msgStyles} onClick={function () {
-                actions.setSource(meta)
+                actions.setSource({ 
+                    ...meta, 
+                    episode: episodeNumber, 
+                    season: seasonNumber,
+                    title: meta.title,
+                    series: series.title
+                })
             }}>Watch</button> || null }
 
             { !handlesPrefix && <div style={{...msgStyles, padding: '0.15em' }}>

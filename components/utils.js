@@ -4,7 +4,8 @@ import { serverRoute } from './fetch'
 const acceptableParameters = [
     'id', 'title', 'type', 'provider', 
     'season', 'episode', 'year', 
-    'season', 'page', 'tmdb_id', 'tmdb', 'region'
+    'season', 'page', 'tmdb_id', 'tmdb', 'region',
+    'series'
 ]
 
 function metaQueryItem (item) {
