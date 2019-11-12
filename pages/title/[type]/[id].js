@@ -10,11 +10,12 @@ import dynamic from 'next/dynamic'
 
 import { Spinner } from '../../../components/Layout'
 
-import { serverRoute } from '../../../components/fetch'
-
 import { parseIdPrefix, filterProviders, metaQueryItem } from '../../../components/utils'
 
 import { keySystems, matchedMime, useProviderMetas, useProviderStreams, useFilteredProviders } from '../../../components/meta'
+import useSWR, { mutate } from 'swr'
+
+import { fetch, formBody } from '../../../components/fetch'
 
 // import 'video.js/dist/video-js.min.css' // breaks routing in dev?
 
@@ -99,12 +100,89 @@ const msgStyles = {
     overflow: 'hidden',
     maxWidth: '200px',
     whiteSpace: 'nowrap',
-    fontSize: '0.75em',
+    fontSize: '1em',
     borderRadius: '3px',
     boxShadow: '1px 1px 3px darkorange',
     color: '#333',
     margin: '0.25em',
 }
+
+
+
+
+
+function AddToPlaylist ({ query, poster }) {
+    const route = '/api/fav'
+    const getHasFav = route + `?id=${encodeURIComponent(query.id)}&playlist=system-fav`
+
+    const { isValidating, data, error } = useSWR(getHasFav, async function (route) {
+        const response = await fetch(route)
+        const json = await response.json()
+
+        return json
+    }, {
+        revalidateOnFocus: false,
+        refreshWhenHidden: false,
+        shouldRetryOnError: false 
+    })
+
+    const hasFav = data && data.value === true
+
+    const [isUpdating, setUpdating] = useState()
+
+    const handleClick = useCallback(function () {
+        if (isUpdating || isValidating) return
+
+        setUpdating(true)
+        
+        fetch(route, {
+            'credentials': 'include',
+            'headers': {
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            'body': formBody(JSON.parse(JSON.stringify({ // strip void 0
+                id: query.id,
+                title: query.title,
+                year: query.year,
+                poster,
+                type: query.type,
+                tmdb_id: query.tmdb_id, 
+                playlist: 'system-fav'
+            }))),
+            'method': hasFav? 'DELETE' : 'POST'
+        }).then((response)=> {
+            if (response.status < 200 || response.status >= 400) 
+            throw new Error('Invalid response')
+            
+            return response.json()
+        }).then(({ value }) => {
+            mutate(getHasFav, { value }, false)
+            setUpdating(false)
+        } , ()=> setUpdating(false))
+
+    }, [getHasFav, poster, query, isUpdating, isValidating, hasFav])
+
+    if (isValidating && !data) return null
+
+    return <button disabled={isValidating || isUpdating} className="material-icons" onClick={handleClick} style={{
+        ...msgStyles,
+        color: hasFav? 'red' : 'initial'
+    }}>
+        favorite
+    </button>
+}
+
+
+
+
+
+
+
+
+
+
 
 export default function InitialMeta({ providers: userProviders, router, userUpdatedAt }) {    
     // Filter query parameters
@@ -153,7 +231,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
             {
                 title: 'TMDb',
                 id: 'tmdb',
-                url: serverRoute('/providers/tmdb'),
+                url: '/providers/tmdb',
                 collections: ['tmdb'],
                 meta: ['*'],
                 streams: ['tmdb']
@@ -210,6 +288,31 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
             }) 
         }
     },[actions, player, tmdb_meta])
+
+    // TODO
+    // const setSource = actions.setSource
+    // const streamProvidersLen = streamProviders && streamProviders.length || 0
+    // useEffect(function () {
+    //     if (!loadingStreams && streamProvidersLen) {
+    //         const objKeys = Object.keys(streams)
+    //         const first = streams[objKeys[0]]
+    //         const firstStream = first && first.status === 'fulfilled' && Array.isArray(first.value) && first.value[0]
+
+    //         if (objKeys.length === 1 && firstStream) {
+    //             const autoplaySrc = {
+    //                 ...firstStream,
+    //                 title: firstStream.title || playerSrc.title,
+    //                 season: playerSrc.season,
+    //                 episode: playerSrc.episode,
+    //                 series: playerSrc.series
+    //             }
+
+    //             // setSource(autoplaySrc)
+
+    //             console.log('[autoplay]', autoplaySrc)
+    //         }
+    //     }
+    // }, [playerSrc, streams, loadingStreams, setSource, streamProvidersLen])
 
     // Append tmdb id to query
     const query = useMemo(function () { 
@@ -299,7 +402,7 @@ function Streams ({ streams, streamProviders, player, /* loadingStreams,  action
 }
 
 function Meta ({ player, tmdb_meta, query, providers, actions, selected, userProviders, season, tmdb_error, userUpdatedAt }) {
-    console.log('[render] Meta', selected, season || 1)
+    console.log('[render] Meta', selected, season || 1, tmdb_error)
 
     const { setSeason, setSelected, setResults } = actions
 
@@ -312,7 +415,7 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
         const dest = { pathname: router.pathname, query: metaQueryItem({ ...query, season: seasonNumber })  }
         const { type, id, ...asQuery } = dest.query
 
-        router.replace(dest, { pathname: `/title/${query.type}/${query.id}`, query: asQuery }, { shallow: true })
+        router.replace(dest, { pathname: `/title/${query.type}/${encodeURIComponent(query.id)}`, query: asQuery }, { shallow: true })
 
         setSeason(seasonNumber)
     }, [setSeason, query])
@@ -321,9 +424,9 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
     const { results: metasByProvider } = useProviderMetas(providers, query, userUpdatedAt, 'all')
     const meta_fallback = useMemo(function () { return metaQueryItem(tmdb_meta || query) }, [tmdb_meta, query]) // fallback to partial info from tmdb or query 
     const results = useMemo(function () {
-        if (!tmdb_meta) return metasByProvider || {}
+        if (!tmdb_meta || tmdb_error) return metasByProvider || {}
         
-        const appended = { status: tmdb_error? 'rejected' : 'fulfilled', value: tmdb_meta }
+        const appended = { status: 'fulfilled', value: tmdb_meta }
         
         if (metasByProvider) {
             metasByProvider['tmdb'] = metasByProvider['tmdb'] || appended
@@ -349,13 +452,14 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
 
     let { status, value: meta } = reflected || {}
 
-    if (status === 'rejected' && metasByProvider) {
-        const nextAvailable = Object.keys(results).find(key => {
-            key !== selected && results[key].status !== 'rejected'
+    if ((!meta || status === 'rejected') && results) {
+        const nextAvailable = Object.keys(results).find(function (key) {
+            return key !== selected && results[key].status === 'fulfilled'
         })
-        
+
         if (nextAvailable) {
             console.log('Fallback to next available provider', nextAvailable)
+            
             setSelected(nextAvailable)
         }
     } 
@@ -411,6 +515,8 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
                     {/* Handle season select when video has list of seasons */}
                     <SelectSeason meta={meta} value={season} handleSeasonSelect={handleSeasonSelect}></SelectSeason>
 
+                    <AddToPlaylist query={query} poster={meta.poster}></AddToPlaylist>
+
                     {
                         // Meta has trailer
                         trailer && <button title="Play trailer" role="button" aria-label="Play trailer" style={msgStyles} title={ trailer.src || trailer.url || trailer.file || trailer.id } onClick={function () {
@@ -424,14 +530,14 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
                     }
 
                     {   // Non series or has direct link
-                        prefix && handlesPrefix && (playDirect || meta.type === 'video' || meta.type === 'movie') && 
-                            <button title="Watch now" role="button" aria-label="Watch now" style={msgStyles} title={ playDirect || meta.id } onClick={function () {
-                                actions.setSource({ 
+                        prefix && handlesPrefix && (playDirect || query.type === 'video' || query.type === 'movie') && 
+                            <button className="material-icons" title="Watch now" role="button" aria-label="Watch now" style={msgStyles} title={ playDirect || meta.id } onClick={function () {
+                                actions.setSource({
                                     ...meta ,
                                     title: meta.title
                                 })
                             }}>
-                            Watch
+                            play_arrow
                             </button> || null
                     }
                     
@@ -494,6 +600,8 @@ function Seasons ({ meta, results, actions, player, userProviders }) {
 
                 if (season) {
                     season.items.forEach(function (item) {
+                        if (!item) return
+
                         const { episode } = item
 
                         const obj = map.get(episode) || Object.create(null)

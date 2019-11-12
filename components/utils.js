@@ -1,5 +1,3 @@
-import { serverRoute } from './fetch'
-
 // Acceptable meta query parameters
 const acceptableParameters = [
     'id', 'title', 'type', 'provider', 
@@ -33,7 +31,7 @@ function filterProviders (prefixStr, providersArr, prop) {
         return [{
             title: 'System',
             id: 'system',
-            url: serverRoute('/providers/system'),
+            url: '/providers/system',
             collections: ['system']
         }]
     }
@@ -45,7 +43,7 @@ function filterProviders (prefixStr, providersArr, prop) {
     providers.push({
         title: 'TMDb', 
         id: 'tmdb',
-        url: serverRoute('/providers/tmdb'),
+        url: '/providers/tmdb',
         collections: ['tmdb'],
         meta: ['*'],
         //streams: ['tmdb']

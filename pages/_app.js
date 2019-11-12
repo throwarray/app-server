@@ -72,7 +72,8 @@ function PageWrapper ({ Component, pageProps, store }) {
     const { data: user, error } = useUser()
 
     useEffect(function () {
-        console.log('user change', error, user)
+        console.log('user updated', error, user)
+
         batch(()=> {
             dispatch(login(error? null : user))
             if (error || user) dispatch(loading(false))

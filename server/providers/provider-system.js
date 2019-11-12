@@ -23,16 +23,31 @@ async function collection (req) {
                         height: 50,
                         width: 100,
                     },
+                    { 
+                        id: 'system-fav',
+                        title: 'Bookmarks'
+                    },
                     { title: 'Popular Movies', type: 'collection', id: 'tmdb-movie-popularity.desc' },
                     { title: 'Popular Series', type: 'collection', id: 'tmdb-series-popularity.desc' }
-                    // { 
-                    //     id: 'system-playlists', 
-                    //     type: 'collection',
-                    //     title: 'Playlists'
-                    // }
                 ]
             }
         
+        break
+
+        case 'system-fav': 
+            if (authed) providers = await mongoose.model('playlistitems').find({ user: authed, playlist: 'system-fav' })
+            
+            providers = providers || []
+
+            collection = {
+                id: 'system-fav',
+                title: 'Bookmarks',
+                items: providers.map(function (item) {
+                    return item
+                }),
+                pageCount: 1
+            }
+
         break
         
         case 'system-providers':

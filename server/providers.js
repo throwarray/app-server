@@ -75,6 +75,134 @@ router.use('/api/providers/remove', withFormBody, function (req, res) {
     }, done)
 })
 
+
+
+// const playlistSchema = new mongoose.Schema({
+//     user: { type: String, required: true },
+//     id: { type: String, required: true, maxlength: 500 }
+// })
+
+const itemSchema = new mongoose.Schema({
+    playlist: {  type: String, required: true, maxlength: 500 },
+
+    user: { type: String, required: true, maxlength: 500 },
+
+    date: { type: Date },
+
+    id: { type: String, required: true, maxlength: 500 },
+
+    tmdb_id: { type: String, maxlength: 100 },
+
+    type: {
+        type: String, 
+        required: true,
+        validate: [
+            function (v) {
+                return v === 'movie' || v === 'series'
+            },
+            'Invalid item type'
+        ]
+    },
+
+    title: { type: String, required: true, maxlength: 500 },
+
+    poster: { type: String, maxlength: 1000 },
+
+    year: {
+        type: Number, 
+        validate: [
+            function (v) { 
+                return /^[0-9]{4,5}$/.test(v) 
+            },
+            'Invalid year'
+        ]
+    }
+})
+
+
+const PlaylistItem = mongoose.model('playlistitems', itemSchema)
+
+function ensureAuthed (req, res, next) {
+    if (!req.isAuthenticated() || !req.user || !req.user.user_id) {
+        res.status(401)
+        res.end('')
+        
+        return
+    }
+
+    next()
+}
+
+router.get('/api/fav', ensureAuthed, withFormBody, function (req, res) { // Add Fav
+    const userId = req.user.user_id
+    const { query, body } = req
+
+    PlaylistItem.findOne({ user: userId, playlist: 'system-fav', id: query.id || body.id }, function (err, doc) {
+        if (err || !doc) res.json({
+            value: false
+        })
+
+        else res.json({
+            value: true
+        })
+    })
+})
+
+router.delete('/api/fav', ensureAuthed, withFormBody, function (req, res) { // Remove Fav
+    const userId = req.user.user_id
+    const { query, body } = req
+
+    PlaylistItem.findOneAndDelete({ user: userId, playlist: 'system-fav', id: query.id || body.id }, function (err, doc) {
+        res.json({
+            value: false
+        })
+    })
+})
+
+router.post('/api/fav', ensureAuthed, withFormBody, function addToFavs (req, res, next) {
+    const userId = req.user.user_id
+    const body = req.body
+    const doc = {
+        ...body, 
+        user: userId, 
+        playlist: 'system-fav',
+        date: Date.now()
+    }
+
+    const playlistItem = new PlaylistItem(doc)
+
+    function handleDone (err) {
+        if (err) res.json({
+            value: false
+        })
+
+        else res.json({
+            value: true
+        })
+    }
+
+    playlistItem.validate(function (err) {
+        if (!err) PlaylistItem.updateOne({
+            user: userId,
+            playlist: 'system-fav',
+            id: body.id
+        }, doc, { upsert: true }, handleDone)
+        else handleDone(err)
+    })
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
 module.exports = async function (/*cfg*/) {
     router.use('/api/providers/add', withFormBody, function (req, res) {
         const userId = req.user && req.user.user_id

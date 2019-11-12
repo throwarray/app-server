@@ -308,12 +308,12 @@ export function Collection  (props) {
         `}</style>
         { <div className="nav">
             { page > 1 && <CollectionLink item={{ ...query, page: Math.max(page - 1, 1) }}>
-                <a className="next" role="link" aria-label={'Go to the previous page'}><i className="material-icons">arrow_backward</i></a>
+                <a className="prev" role="link" aria-label={'Go to the previous page'}><i className="material-icons">arrow_backward</i></a>
             </CollectionLink> }
 
             <div className="pagination-info">{ page } / { pageCount || '∞'/*'∞⧜'*/ }</div>
 
-            { collection.items && collection.items.length && <CollectionLink item={{ ...query, page: page && Math.min(page + 1, pageCount || Infinity) }}>
+            { collection.items && collection.items.length && (!pageCount || page + 1 < pageCount) && <CollectionLink item={{ ...query, page: page && Math.min(page + 1, pageCount || Infinity) }}>
                 <a className="next" role="link" aria-label={'Go to the next page'}><i className="material-icons">arrow_forward</i></a>
             </CollectionLink> }
         </div>}

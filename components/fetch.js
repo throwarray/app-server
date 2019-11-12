@@ -1,8 +1,7 @@
 // Used in node: Don't convert to es module syntax
-
 const AbortController = require('abort-controller')
 
-const originalFetch = require('isomorphic-unfetch')
+const fetch = require('./fetcher')
 
 const { format : formatURL, parse : parseURL } = require('url')
 
@@ -16,8 +15,6 @@ const parsedAppURL = parseURL(APP_URL)
 
 const reflect = p => p.then(v => ({ value: v, status: 'fulfilled' }), e => ({ value: e, status: 'rejected' }))
 
-let freeAgent
-
 function serverRoute (providedPath = '') {
     let { search, pathname } = parseURL(providedPath, true)
 
@@ -29,42 +26,20 @@ function serverRoute (providedPath = '') {
     })
 }
 
-if (!process.browser) {
-    const https = require('https')
-    
-    freeAgent = https.Agent({ rejectUnauthorized: false })
-}
-
-const empty = {}
-
-function fetch (url = '', options = empty) {
-    const parsed = parseURL(typeof url === 'object' ? url.toString() : url)
-    const optionsDefault = {}
-
-    if (!parsed.host) {
-        parsed.protocol = parsedAppURL.protocol
-        parsed.host = parsedAppURL.host
-        parsed.hostname = parsedAppURL.hostname
-        parsed.port = parsedAppURL.port
-        parsed.href = null
-    }
-
-    if (
-        freeAgent &&
-        parsedAppURL.protocol === 'https:' &&
-        parsed.host === parsedAppURL.host && 
-        parsed.hostname === parsedAppURL.hostname &&
-        parsed.protocol === 'https:'
-    ) options.agent = freeAgent
-
-    return originalFetch(formatURL(parsed), { 
-        ...optionsDefault, 
-        ...options 
-    })
-}
-
 function combineURLS(baseURL, relativeURL) {
     return relativeURL ? baseURL.replace(/\/+$/, '') + '/' + relativeURL.replace(/^\/+/, '') : baseURL
+}
+
+function formBody (obj) {
+    return Object.keys(obj).map(function (key) {
+        const val = obj[key]
+        const k = global.encodeURIComponent(key)
+        
+        if (val === void 0)
+        return k === void 0 ? '' : k
+        else
+        return `${k}=${global.encodeURIComponent(val)}`
+    }).join('&')
 }
 
 module.exports = {
@@ -75,5 +50,6 @@ module.exports = {
     stringifyQuery,
     serverRoute,
     formatURL,
+    formBody,
     parseURL
 }

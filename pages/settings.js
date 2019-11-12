@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo, useCallback } from 'react'
 import { Message } from '../components/Layout'
-import { fetch } from '../components/fetch'
+import { fetch, formBody } from '../components/fetch'
 import { trigger } from 'swr'
 import Head from 'next/head'
 
@@ -20,18 +20,6 @@ export default function ({ providers, user }) {
             <Page providers={providers}></Page>
         }
     </>
-}
-
-function formBody (obj) {
-    return Object.keys(obj).map(function (key) {
-        const val = obj[key]
-        const k = global.encodeURIComponent(key)
-        
-        if (val === void 0)
-        return k === void 0 ? '' : k
-        else
-        return `${k}=${global.encodeURIComponent(val)}`
-    }).join('&')
 }
 
 function Page ({ providers }) {
