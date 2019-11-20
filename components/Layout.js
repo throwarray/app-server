@@ -252,7 +252,9 @@ function NoScript (props) {
 function useScrollTop (elementToScroll)  {
     useEffect(() => {
         const handleRouteChange = (/*url*/)=> { 
-            document.querySelector(elementToScroll).scrollTo(0, 0) 
+            const appNode = document.querySelector(elementToScroll)
+
+            if (appNode) appNode.scrollTo(0, 0) 
         }
       
         Router.events.on('routeChangeComplete', handleRouteChange)

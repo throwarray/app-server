@@ -1,13 +1,10 @@
-// TODO 
-
-import { ThemeContext } from '../components/theme-context.js'
-
-import { useContext } from 'react'
-
 import Head from 'next/head'
 
 function Button ({ children }) {
-    const theme = useContext(ThemeContext)
+    const theme = {
+        background: 'black',
+        color: 'white'
+    }//useContext(ThemeContext)
     
     return <button>
         <style jsx>{`

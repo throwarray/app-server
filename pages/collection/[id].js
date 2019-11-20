@@ -7,8 +7,7 @@ import Head from 'next/head'
 import { useProviderCollection } from '../../components/meta'
 
 export default function (props) {
-    const { router } = props
-    const { query } = router
+    const { query = props.router.query } = props
     const id = query.id
     const title = `Collection ${ query.title || id || '' } | App`
 

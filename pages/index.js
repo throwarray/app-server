@@ -1,3 +1,3 @@
-import index from './collection/[id].js' 
+import index from './collection' 
 
 export default index

@@ -5,7 +5,7 @@ import App from 'next/app'
 import { fetch } from '../components/fetch'
 import { Provider } from 'react-redux'
 import { initializeStore, login, loading } from '../components/store.js'
-import { ThemeContext, themes }  from '../components/theme-context.js'
+
 import { batch } from 'react-redux'
 import { Layout } from '../components/Layout'
 import { useEffect } from 'react'
@@ -81,8 +81,6 @@ function PageWrapper ({ Component, pageProps, store }) {
     }, [dispatch, error, user])
 
     return <Provider store={ store }>
-        <ThemeContext.Provider value={themes.dark}>
             <Layout Component={ Component } pageProps={pageProps}/>
-        </ThemeContext.Provider>
     </Provider>
 }

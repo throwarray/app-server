@@ -46,7 +46,7 @@ function filterProviders (prefixStr, providersArr, prop) {
         url: '/providers/tmdb',
         collections: ['tmdb'],
         meta: ['*'],
-        //streams: ['tmdb']
+        streams: ['tmdb']
     })
 
     const matched_providers = providers.filter(provider => {

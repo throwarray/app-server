@@ -11,6 +11,9 @@ module.exports = withFonts(withOffline(withImages(withCSS({
   env: {
     APP_URL: process.env.APP_URL || 'http://localhost:3000'
   },
+  devIndicators: {
+    autoPrerender: false,
+  },
   webpack: (config /*, { isServer, dev, buildId, config: { distDir } } */) => {
     config.node = { fs: 'empty' }
     

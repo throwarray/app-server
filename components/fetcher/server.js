@@ -1,6 +1,6 @@
 const https = require('https')
 
-const originalFetch = require('isomorphic-unfetch').default
+const originalFetch = require('isomorphic-unfetch') //.default
 
 const { format : formatURL, parse : parseURL } = require('url')
 
