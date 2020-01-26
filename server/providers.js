@@ -191,18 +191,6 @@ router.post('/api/fav', ensureAuthed, withFormBody, function addToFavs (req, res
     })
 })
 
-
-
-
-
-
-
-
-
-
-
-
-
 module.exports = async function (/*cfg*/) {
     router.use('/api/providers/add', withFormBody, function (req, res) {
         const userId = req.user && req.user.user_id

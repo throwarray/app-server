@@ -148,7 +148,7 @@ function AddToPlaylist ({ query, poster }) {
                 year: query.year,
                 poster,
                 type: query.type,
-                tmdb_id: query.tmdb_id, 
+                tmdb_id: query.tmdb_id === 'false'? false : query.tmdb_id, 
                 playlist: 'system-fav'
             }))),
             'method': hasFav? 'DELETE' : 'POST'
@@ -203,7 +203,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
     
         const selectedId = selected && selected.id
     
-        console.log('getMetaProviders', metaProviders)
+        console.log('getMetaProviders', prefix, queryId)
         console.log('should use tmdb meta', shouldUseTmdb)
 
         return [metaProviders, selectedId]

@@ -3,17 +3,22 @@ const withImages = require('next-images')
 const withOffline = require('next-offline')
 const withFonts = require('next-fonts')
 
+// const { join: joinPath } = require('path')
+
 require('dotenv').config()
+
+const APP_URL = process.env.APP_URL.replace(/\/$/, '')
 
 module.exports = withFonts(withOffline(withImages(withCSS({
   // exportTrailingSlash: true,
   poweredByHeader: false,
-  env: {
-    APP_URL: process.env.APP_URL || 'http://localhost:3000'
+  env: { 
+    APP_URL: process.env.APP_URL || 'http://localhost:3000' 
   },
-  devIndicators: {
-    autoPrerender: false,
+  devIndicators: { 
+    autoPrerender: false 
   },
+
   webpack: (config /*, { isServer, dev, buildId, config: { distDir } } */) => {
     config.node = { fs: 'empty' }
     
@@ -22,14 +27,36 @@ module.exports = withFonts(withOffline(withImages(withCSS({
 
     return config
   },
-  transformManifest: manifest => ['/'].concat(manifest),
-  
+
+  // transformManifest: manifest => [
+  //   '/'
+  //   // '/collection',
+  //   // '/collection/[id]',
+  //   // '/title/[type]/[id]',
+  //   // '/about',
+  //   // '/privacy',
+  //   // '/settings',
+  //   // '/terms'
+  // ].concat(manifest),
   // generateInDevMode: true,
   
+  experimental: {
+    async rewrites() {
+      return [
+        {
+          source: '/service-worker.js',
+          destination: '/_next/static/service-worker.js',
+        },
+      ]
+    },
+  },
+
   workboxOpts: {
     // clientsClaim: true,
     // skipWaiting: true,
     cleanupOutdatedCaches: true,
+    swDest: process.env.NEXT_EXPORT? 'service-worker.js' : 'static/service-worker.js',
+
     exclude: [
       // /user/,
       // /.*\/_next\/webpack-hmr.*/, 
@@ -92,7 +119,27 @@ module.exports = withFonts(withOffline(withImages(withCSS({
         options: {
           cacheName: 'stylesheets'
         }
+      },
+      {
+        urlPattern: new RegExp(`^${APP_URL}(/.*)?$`), // new RegExp(`^${APP_URL}(/([^.])+)?($|/{1,}.*(\\.js|\\.jsx|\\.css|\\.html))$`),
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'offlineCache',
+          expiration: {
+            maxEntries: 100
+          }
+        }
       }
+      // {
+      //   urlPattern: /^https?.*/,
+      //   handler: 'NetworkFirst',
+      //   options: {
+      //     cacheName: 'offlineCache',
+      //     expiration: {
+      //       maxEntries: 100
+      //     }
+      //   }
+      // }
     ]
   }
 }))))

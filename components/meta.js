@@ -22,7 +22,6 @@ function fetchProviderMetas (query, providers, handleOne = (d)=> d, pathname = '
 
     const onAbort = function () { 
         deferred(new Error('AbortError'))
-
         signal.removeEventListener('abort', onAbort)
     }
 
@@ -50,6 +49,8 @@ function fetchProviderMetas (query, providers, handleOne = (d)=> d, pathname = '
             }))
     }
 
+    let finished = false
+
     parallelLimit([
         function (cb) { deferred = cb },
 
@@ -58,10 +59,10 @@ function fetchProviderMetas (query, providers, handleOne = (d)=> d, pathname = '
                 count = count + 1
 
                 fetchMetaProvider(provider, signal).then(function (reflected) {
-                    if (!signal.aborted) {
+                    if (!signal.aborted && !finished) {
                         if (count === providers.length) { 
-                            deferred()
-        
+                            finished = true
+                            deferred() 
                             signal.removeEventListener('abort', onAbort)
                         }
                         cb(null, handleOne(reflected, i))
@@ -243,7 +244,9 @@ function useProviderCollection (providers, query, userUpdatedAt) {
         shouldRetryOnError: false 
     })
 
-    return { ...output, key }
+    output.key = key
+
+    return output //{ ...output, key }
 }
 
 // Allow mimetype short form
