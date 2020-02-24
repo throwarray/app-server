@@ -22,6 +22,8 @@ module.exports = withFonts(withOffline(withImages(withCSS({
     POST_LOGOUT_REDIRECT_URI: process.env.POST_LOGOUT_REDIRECT_URI || APP_URL,
     SESSION_COOKIE_SECRET: process.env.SESSION_SECRET || process.env.SESSION_COOKIE_SECRET,
     SESSION_COOKIE_LIFETIME: 7200, // 2 hours
+    TMDB_V3: process.env.TMDB_V3,
+    TMDB_V4: process.env.TMDB_V4
   },
 
   devIndicators: { autoPrerender: false },
