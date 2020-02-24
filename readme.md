@@ -7,16 +7,17 @@
 ## Start
 `npm run dev`
 
-## Example
-Have a look at the file `server/providers/example.js`
+## Add providers
 
-Add it as a provider by visiting the settings page.
+Login and add the provider by visiting the settings page.
 
 ```
 provider id: example
-url: /providers/example
+url: api/providers/example
 title: Example
 streams: example
 meta: example
 collections: example
 ```
+
+Have a look at the directory `pages/api/providers/examples`
