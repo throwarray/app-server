@@ -1,12 +1,19 @@
-const mongoose = require('mongoose')
+import connectNext from 'next-connect'
 
-async function collection (req) {
+import passport from '../../_middleware/passport'
+
+const router = connectNext()
+
+router.use(passport)
+
+router.get(async function (req, res, next) {
     let collection
     let providers
     let isError
-    const { user, query = {} } = req
+
+    const { query = {}, db, user } = req
+    const authed = user && user.user_id || ''
     const id = query.id || ''
-    const authed = req.isAuthenticated() /* not bound */ && user && user.user_id
 
     switch (id) {
         case '':
@@ -23,10 +30,7 @@ async function collection (req) {
                         height: 50,
                         width: 100,
                     },
-                    { 
-                        id: 'system-fav',
-                        title: 'Bookmarks'
-                    },
+                    { title: 'Bookmarks', id: 'system-fav' },
                     { title: 'Popular Movies', type: 'collection', id: 'tmdb-movie-popularity.desc' },
                     { title: 'Popular Series', type: 'collection', id: 'tmdb-series-popularity.desc' }
                 ]
@@ -35,7 +39,9 @@ async function collection (req) {
         break
 
         case 'system-fav': 
-            if (authed) providers = await mongoose.model('playlistitems').find({ user: authed, playlist: 'system-fav' })
+            if (authed) providers = await db
+                .collection('playlistitems')
+                .find({ user: authed, playlist: 'system-fav' }).toArray()
             
             providers = providers || []
 
@@ -51,7 +57,10 @@ async function collection (req) {
         break
         
         case 'system-providers':
-            if (authed) providers = await mongoose.model('providers').find({ user: authed }) || []
+            if (authed) providers = await db
+                .collection('providers')
+                .find({ user: authed }).toArray() || []
+                
             else providers = []
 
             collection = {
@@ -71,7 +80,7 @@ async function collection (req) {
         break
         
         case 'system-playlists':
-            if (authed) providers = await mongoose.model('collections').find({ user: authed }) || []
+            if (authed) providers = await db.collection('collections').find({ user: authed }).toArray() || []
             else providers = []
 
             collection = {
@@ -97,15 +106,12 @@ async function collection (req) {
         break
     }
 
-    if (collection && !isError) return collection
-}
+    if (collection && !isError) {
+        res.json(collection)
+    } else {
+        res.status(404)
+        res.end('')
+    }
+})
 
-async function meta (/*{ query }*/) {}
-
-async function streams (/*{ query }*/) {}
-
-module.exports = {
-    collection,
-    meta, 
-    streams
-}
+export default (req, res) => router.apply(req, res)

@@ -52,8 +52,8 @@ export default class extends App {
 }
 
 function useUser (props) {
-    return useSWR('/user', async function () {
-        const response = await fetch('/user')
+    return useSWR('/api/user', async function () {
+        const response = await fetch('/api/user')
         const isUnauthenticated = response.status >= 400 || response.status < 200
         
         if (isUnauthenticated) throw new Error('Unauthenticated')

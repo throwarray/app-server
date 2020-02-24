@@ -10,9 +10,9 @@ import { useEffect } from 'react'
 import { trigger } from 'swr'
 
 function logout () {
-    function handleLogout () { trigger('/user') }
+    function handleLogout () { trigger('/api/user') }
 
-    return Promise.resolve(fetch('/logout').then(handleLogout, handleLogout))
+    return Promise.resolve(fetch('/api/logout').then(handleLogout, handleLogout))
 }
 
 const Aside = function (/*{ providers }*/) {
@@ -146,7 +146,7 @@ const Header = function Header ({ user, logout }) {
             </nav> : <nav role="navigation">
                 <div aria-hidden="true"></div>
                 <div aria-hidden="true" style={{ width: 32, height: 32 }}></div>
-                <a href="/login" role="link" aria-label="Click to proceed to login" title="Login">Login</a>
+                <a href="/api/login" role="link" aria-label="Click to proceed to login" title="Login">Login</a>
             </nav>
         }
     </header>

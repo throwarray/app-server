@@ -4,7 +4,7 @@ import { fetch, formBody } from '../components/fetch'
 import { trigger } from 'swr'
 import Head from 'next/head'
 
-function refreshUserState () { trigger('/user') }
+function refreshUserState () { trigger('/api/user') }
 
 export default function ({ providers, user }) {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine
@@ -112,7 +112,7 @@ function Page ({ providers }) {
                             formRef.current.scrollIntoView()
                         }}>settings</li>
 
-                        <form method="POST" action="/api/providers/remove" onSubmit={submitForm}>
+                        <form method="POST" action="/api/providers/system/removeProvider" onSubmit={submitForm}>
                             <input type="text" name="id" style={{ display: 'none' }} defaultValue={provider.id}></input>
                             <button>
                                 <li className="material-icons">delete</li>
@@ -125,7 +125,7 @@ function Page ({ providers }) {
         </div>
     </div>
 
-    <form className="add_provider" ref={formRef} method="POST" action="/api/providers/add" onSubmit={submitForm}>
+    <form className="add_provider" ref={formRef} method="POST" action="/api/providers/system/addProvider" onSubmit={submitForm}>
         <style>{`
             .add_provider { margin: 1em; }
             .add_provider label { display: block; }

@@ -31,7 +31,7 @@ function filterProviders (prefixStr, providersArr, prop) {
         return [{
             title: 'System',
             id: 'system',
-            url: '/providers/system',
+            url: '/api/providers/system',
             collections: ['system']
         }]
     }
@@ -43,7 +43,7 @@ function filterProviders (prefixStr, providersArr, prop) {
     providers.push({
         title: 'TMDb', 
         id: 'tmdb',
-        url: '/providers/tmdb',
+        url: '/api/providers/tmdb', //'/providers/tmdb',
         collections: ['tmdb'],
         meta: ['*'],
         streams: ['tmdb']

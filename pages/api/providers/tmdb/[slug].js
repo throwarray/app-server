@@ -1,20 +1,13 @@
-const express = require('express')
+import { Search, Season, Meta, Discover } from './_lib.js'
 
-const { Search, Season, Meta, Discover } = require('./lib-tmdb')
-
+const hasOwn = Object.prototype.hasOwnProperty
 const { promisify } = require('util')
+const getMetaAsync = promisify(Meta)
+const getSeasonAsync = promisify(Season)
+const getSearchAsync = promisify(Search)
+const getDiscoverAsync = promisify(Discover)
 
 const { get: levenshtein } = require('fast-levenshtein')
-
-const router = express.Router()
-
-const handleReqAsync = fn => (...args) => fn(...args).catch(args[2])
-
-const getMetaAsync = promisify(Meta)
-
-const getSeasonAsync = promisify(Season)
-
-const getSearchAsync = promisify(Search)
 
 function StrOrVoid (input) { return (input === void 0? input : String(input)) || void 0 } // strip empty str
 
@@ -66,7 +59,10 @@ function getNearestMatchOfResults (query, items, maxLevDist = 6) {
     }
 }
 
-router.get('/meta.json', handleReqAsync(async function (req, res) {
+const api = Object.create(null)
+
+
+api.meta = async function (req, res) {
     let id
     let season = req.query.season === void 0? 1 : Number(req.query.season)
     let mediaType = StrOrVoid(req.query.type)
@@ -183,38 +179,31 @@ router.get('/meta.json', handleReqAsync(async function (req, res) {
     }
     
     res.json(output)
-}))
+}
 
-// TODO Fetch meta and respond with trailers
-router.get('/streams.json', (req, res)=> {
-    //res.status(404)
-    //res.json([])
-    
-    res.json([
-        {
-            title: 'Big Buck',
-            file: '/mov_bbb.mp4',
-            type: 'mp4'
-        },
-        {
-            'type': 'video/youtube', 
-            'file': 'https://www.youtube.com/watch?v=xjS6SftYQaQ'
-        }, 
-        {
-            file: 'https://s3.amazonaws.com/_bc_dml/example-content/sintel_dash/sintel_vod.mpd',
-            type: 'application/dash+xml'
-        },
-        {
-            file: 'https://d2zihajmogu5jn.cloudfront.net/bipbop-advanced/bipbop_16x9_variant.m3u8', 
-            type: 'application/x-mpegurl'
-        }
-    ])
-})
+async function fourOhfour (req, res) {
+    res.status(404)
+    res.json('')
+}
 
-router.get('/collection.json', (req, res)=> {
+api.streams = fourOhfour
+
+export default async function (req, res) {
+    const { slug: pathname = '' } = req.query || {}
+
+    const removedExt = pathname.replace(/.json$/, '')
+
+    if (hasOwn.call(api, removedExt)) {
+        await api[removedExt](req, res)
+    } else {
+        await fourOhfour(req, res)
+    }
+}
+
+api.collection = async (req, res) => {
     const query = req.query || {}
     const page = Number(query.page) || 1
-    const id = query.id
+    const id = query.id || 'tmdb'
 
     if (id === 'tmdb') {
         return res.json({
@@ -233,48 +222,49 @@ router.get('/collection.json', (req, res)=> {
 
     if (!matched || !collectionId) { 
         res.status(404)
-        return res.json({})
+        res.json({})
+        return
     }
 
     const [collectionType, collectionQuery] = collectionId.split('-')
 
-    Discover({ type: collectionType, sort_by: collectionQuery, page }, function (err, data) {
-        if (err) {
-            res.status(404)
-            return res.json({})
+    let data; try {
+        data = await getDiscoverAsync({ type: collectionType, sort_by: collectionQuery, page })
+    } catch (e) {
+        res.status(404)
+        res.json({})
+        return
+    }
+
+    // Transform response into collection format
+    const {
+        page: pageN,
+        total_pages,
+        total_results,
+        results = []
+    } = data.body
+
+    const items = results.map(item=> {
+        const out = {
+            title: item.title || item.name, // movie | series
+            tmdb_id: item.id,
+            id: 'tmdb-' + Number(item.id),
+            year: Number(item.year) || new Date(item.release_date || item.first_air_date).getFullYear(), // movie | series
+            release_date: item.release_date || item.first_air_date,
+            type: collectionType
         }
 
-        // Transform response into collection format
-        const {
-            page,
-            total_pages,
-            total_results,
-            results = []
-        } = data.body
+        if (item.poster_path) out.poster = combineURLS('https://image.tmdb.org/t/p/w200', item.poster_path)
 
-        const items = results.map(item=> {
-            const out = {
-                title: item.title || item.name, // movie | series
-                tmdb_id: item.id,
-                id: 'tmdb-' + Number(item.id),
-                year: Number(item.year) || new Date(item.release_date || item.first_air_date).getFullYear(), // movie | series
-                release_date: item.release_date || item.first_air_date,
-                type: collectionType
-            }
-
-            if (item.poster_path) out.poster = combineURLS('https://image.tmdb.org/t/p/w200', item.poster_path)
-
-            return out
-        })
-
-        res.json({
-            id,
-            items,
-            page,
-            total_pages,
-            total_results
-        })
+        return out
     })
-})
 
-module.exports = router
+    res.json({
+        id,
+        items,
+        page: pageN,
+        total_pages,
+        total_results
+    })
+
+}

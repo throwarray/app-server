@@ -112,7 +112,7 @@ const msgStyles = {
 
 
 function AddToPlaylist ({ query, poster }) {
-    const route = '/api/fav'
+    const route = '/api/providers/system/fav'
     const getHasFav = route + `?id=${encodeURIComponent(query.id)}&playlist=system-fav`
 
     const { isValidating, data, error } = useSWR(getHasFav, async function (route) {
@@ -231,7 +231,7 @@ export default function InitialMeta({ providers: userProviders, router, userUpda
             {
                 title: 'TMDb',
                 id: 'tmdb',
-                url: '/providers/tmdb',
+                url: '/api/providers/tmdb', //'/providers/tmdb',
                 collections: ['tmdb'],
                 meta: ['*'],
                 streams: ['tmdb']
