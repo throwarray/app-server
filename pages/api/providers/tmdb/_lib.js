@@ -11,12 +11,17 @@ const defaultSearchOpts = {
     language: 'en-US'
 }
 
+function combineURLS (baseURL, relativeURL) {
+    return relativeURL ? baseURL.replace(/\/+$/, '') + '/' + relativeURL.replace(/^\/+/, '') : baseURL
+}
+
 module.exports = {
     Search,
     Meta,
     Season,
     Discover,
-    config
+    config, 
+    combineURLS
 }
 
 function config (props) {

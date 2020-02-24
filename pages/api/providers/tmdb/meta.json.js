@@ -1,13 +1,10 @@
-import { Search, Season, Meta, Discover } from './_lib.js'
+import { combineURLS, Search, Season, Meta } from './_lib.js'
+import { promisify } from 'util'
 
-const hasOwn = Object.prototype.hasOwnProperty
-const { promisify } = require('util')
+const { get: levenshtein } = require('fast-levenshtein')
 const getMetaAsync = promisify(Meta)
 const getSeasonAsync = promisify(Season)
 const getSearchAsync = promisify(Search)
-const getDiscoverAsync = promisify(Discover)
-
-const { get: levenshtein } = require('fast-levenshtein')
 
 function StrOrVoid (input) { return (input === void 0? input : String(input)) || void 0 } // strip empty str
 
@@ -24,45 +21,7 @@ function getTrailer (item) {
     //return trailer
 }
 
-function combineURLS (baseURL, relativeURL) {
-    return relativeURL ? baseURL.replace(/\/+$/, '') + '/' + relativeURL.replace(/^\/+/, '') : baseURL
-}
-
-// Get meta for series / movie
-// Finds nearest match based on mediaType, title and year when missing id
-
-function getNearestMatchOfResults (query, items, maxLevDist = 6) {
-    if (Array.isArray(items)) {
-        let nearest
-
-        items.forEach(function (item) {
-            const { name, title } = item
-
-            let termDistance = levenshtein(query.query, name || title, { useCollator: true })
-    
-            if (termDistance < maxLevDist) {
-                if (query.year !== void 0) {
-                    const itemYear = Number(item.year || new Date(item.release_date || item.first_air_date).getFullYear()) || 0
-
-                    termDistance += Math.abs(query.year - itemYear) * maxLevDist
-                }
-
-                if (!nearest || !termDistance || termDistance <= nearest.distance) {
-                    if (!nearest) nearest = {}
-                    nearest.distance = termDistance
-                    nearest.value = item
-                }
-            }
-        })
-    
-        if (nearest) return nearest
-    }
-}
-
-const api = Object.create(null)
-
-
-api.meta = async function (req, res) {
+export default async function (req, res) {
     let id
     let season = req.query.season === void 0? 1 : Number(req.query.season)
     let mediaType = StrOrVoid(req.query.type)
@@ -181,90 +140,30 @@ api.meta = async function (req, res) {
     res.json(output)
 }
 
-async function fourOhfour (req, res) {
-    res.status(404)
-    res.json('')
-}
+function getNearestMatchOfResults (query, items, maxLevDist = 6) {
+    if (Array.isArray(items)) {
+        let nearest
 
-api.streams = fourOhfour
+        items.forEach(function (item) {
+            const { name, title } = item
 
-export default async function (req, res) {
-    const { slug: pathname = '' } = req.query || {}
+            let termDistance = levenshtein(query.query, name || title, { useCollator: true })
+    
+            if (termDistance < maxLevDist) {
+                if (query.year !== void 0) {
+                    const itemYear = Number(item.year || new Date(item.release_date || item.first_air_date).getFullYear()) || 0
 
-    const removedExt = pathname.replace(/.json$/, '')
+                    termDistance += Math.abs(query.year - itemYear) * maxLevDist
+                }
 
-    if (hasOwn.call(api, removedExt)) {
-        await api[removedExt](req, res)
-    } else {
-        await fourOhfour(req, res)
-    }
-}
-
-api.collection = async (req, res) => {
-    const query = req.query || {}
-    const page = Number(query.page) || 1
-    const id = query.id || 'tmdb'
-
-    if (id === 'tmdb') {
-        return res.json({
-            id,
-            type: 'collection',
-            title: 'TMDb',
-            items: [
-                { title: 'Popular Movies', type: 'collection', id: 'tmdb-movie-popularity.desc' },
-                { title: 'Popular Series', type: 'collection', id: 'tmdb-series-popularity.desc' }
-            ]
+                if (!nearest || !termDistance || termDistance <= nearest.distance) {
+                    if (!nearest) nearest = {}
+                    nearest.distance = termDistance
+                    nearest.value = item
+                }
+            }
         })
+    
+        if (nearest) return nearest
     }
-
-    const matched = id.match(/^([^-]+)-(.+)$/)
-    const [,, collectionId] = matched || []
-
-    if (!matched || !collectionId) { 
-        res.status(404)
-        res.json({})
-        return
-    }
-
-    const [collectionType, collectionQuery] = collectionId.split('-')
-
-    let data; try {
-        data = await getDiscoverAsync({ type: collectionType, sort_by: collectionQuery, page })
-    } catch (e) {
-        res.status(404)
-        res.json({})
-        return
-    }
-
-    // Transform response into collection format
-    const {
-        page: pageN,
-        total_pages,
-        total_results,
-        results = []
-    } = data.body
-
-    const items = results.map(item=> {
-        const out = {
-            title: item.title || item.name, // movie | series
-            tmdb_id: item.id,
-            id: 'tmdb-' + Number(item.id),
-            year: Number(item.year) || new Date(item.release_date || item.first_air_date).getFullYear(), // movie | series
-            release_date: item.release_date || item.first_air_date,
-            type: collectionType
-        }
-
-        if (item.poster_path) out.poster = combineURLS('https://image.tmdb.org/t/p/w200', item.poster_path)
-
-        return out
-    })
-
-    res.json({
-        id,
-        items,
-        page: pageN,
-        total_pages,
-        total_results
-    })
-
 }
