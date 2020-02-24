@@ -2,40 +2,34 @@ const withCSS = require('@zeit/next-css')
 const withImages = require('next-images')
 const withOffline = require('next-offline')
 const withFonts = require('next-fonts')
+const { URL } = require('url')
 
 require('dotenv').config()
 
-
-const APP_URL = process.env.APP_URL.replace(/\/$/, '')
+const APP_URL = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 
 module.exports = withFonts(withOffline(withImages(withCSS({
-  // exportTrailingSlash: true,
   poweredByHeader: false,
-
   target: 'serverless',
-
   env: {
-    APP_URL: process.env.APP_URL || 'http://localhost:3000',
+    APP_URL: APP_URL,
     DB_URL: process.env.DB_URL,
     AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
     AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
     AUTH0_SCOPE: 'openid profile',
-    REDIRECT_URI: process.env.REDIRECT_URI || 'http://localhost:3000/api/callback',
-    POST_LOGOUT_REDIRECT_URI: process.env.POST_LOGOUT_REDIRECT_URI || 'http://localhost:3000/',
+    REDIRECT_URI: process.env.REDIRECT_URI || new URL('/api/callback', APP_URL),
+    POST_LOGOUT_REDIRECT_URI: process.env.POST_LOGOUT_REDIRECT_URI || APP_URL,
     SESSION_COOKIE_SECRET: process.env.SESSION_SECRET || process.env.SESSION_COOKIE_SECRET,
     SESSION_COOKIE_LIFETIME: 7200, // 2 hours
   },
 
-  devIndicators: { 
-    autoPrerender: false 
-  },
+  devIndicators: { autoPrerender: false },
 
   webpack: (config /*, { isServer, dev, buildId, config: { distDir } } */) => {
     config.node = { fs: 'empty' }
     
     // config.resolve.alias['@'] = __dirname
-
     // config.resolve.alias['components'] = joinPath(__dirname, 'components')
 
     return config
