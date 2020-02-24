@@ -5,6 +5,7 @@ const withFonts = require('next-fonts')
 
 require('dotenv').config()
 
+
 const APP_URL = process.env.APP_URL.replace(/\/$/, '')
 
 module.exports = withFonts(withOffline(withImages(withCSS({
@@ -34,6 +35,7 @@ module.exports = withFonts(withOffline(withImages(withCSS({
     config.node = { fs: 'empty' }
     
     // config.resolve.alias['@'] = __dirname
+
     // config.resolve.alias['components'] = joinPath(__dirname, 'components')
 
     return config
