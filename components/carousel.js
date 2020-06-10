@@ -109,21 +109,23 @@ export function Item ({ width, height, item, /*dest = '/title'*/ }) {
 
 export function Carousel (props) {  
     const componentRef = useRef()
-    const { userUpdatedAt, width, height, query, providers } = props
+    const { userUpdatedAt, width, height, query, providers, collection } = props
   
     // IDEA replace once collection is ready
-    const { id, title, page = 1 } =  query // collection
+    const { id, title, page = 1 } =  query || collection
 
     return <div style={{ padding: '1em', height: 'max-content' }}>
-        <CollectionLink item={ query }>
+        <CollectionLink item={ { id, title, page } }>
             <a className="collection-title" role="link" aria-label={ title || id }>
                 <h3 style={{ margin: '0.5em 0', padding: 0 }}>
                     { title || id }
                 </h3>
             </a>
         </CollectionLink>
+        {/* Don't fetch the items until the carousel scrolls into view */}
         <LazyLoad height={height}>
             <CarouselMounted {...{
+                collection,
                 userUpdatedAt,
                 id,
                 title,
@@ -138,10 +140,14 @@ export function Carousel (props) {
     </div>
 }
 
-// Don't fetch the items until the carousel scrolls into view
-function CarouselMounted ({ userUpdatedAt, query, providers, width, id, title, height, componentRef }) {
+function CarouselMounted ({ 
+    collection: supplied_collection,
+    userUpdatedAt, query: supplied_query, providers, width, id, title, height, componentRef }) {
+
     const listRef = useRef()
-    const { error, data: collection = { ...query } } = useProviderCollection(providers, query, userUpdatedAt)
+    const query = supplied_collection || supplied_query
+
+    const { error, data: collection = { ...query } } = useProviderCollection(providers, query, userUpdatedAt, supplied_collection)
     const loading = !error && collection == void 0
     const items = collection.items || [{}]
 

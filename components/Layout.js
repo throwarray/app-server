@@ -1,11 +1,9 @@
 import Link from 'next/link'
 import Router, { withRouter } from 'next/router'
 
-// import Head from 'next/head'
-
 import { connect } from 'react-redux'
 import { fetch } from './fetch'
-import ReactDOMServer from 'react-dom/server'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { useEffect } from 'react'
 import { trigger } from 'swr'
 
@@ -171,11 +169,10 @@ function Footer () {
             }
         `}
         </style>
-        {/* <p>
-            This product uses the TMDb API but is not endorsed or certified by <a className="brand tmdb" href={'https://www.themoviedb.org/'}>TMDb.</a>
-            We do not claim ownership of any of the images or data in the API.
+        <p>
+            This product uses the TMDb API but is not endorsed or certified by <a className="brand tmdb" href={'https://www.themoviedb.org/'}>TMDb</a>. We do not claim ownership of any of the images or data in the API.
         </p>
-         */}
+        
         <Link href={'/about'}><a className="footer-link" title="Contact us" role="link" aria-label="Click to view about us">Contact us</a></Link>
         <Link href={'/terms'}><a className="footer-link" title="Terms of Service" role="link" aria-label="Click to view terms of service">Terms of Service</a></Link>
         <Link href={'/privacy'}><a className="footer-link" title="Privacy Policy" role="link" aria-label="Click to view privacy policy">Privacy Policy</a></Link>
@@ -244,7 +241,7 @@ function Spinner () {
 }
 
 function NoScript (props) {
-  const staticMarkup = ReactDOMServer.renderToStaticMarkup(props.children)
+  const staticMarkup = renderToStaticMarkup(props.children)
 
   return <noscript dangerouslySetInnerHTML={{ __html: staticMarkup }} />
 }

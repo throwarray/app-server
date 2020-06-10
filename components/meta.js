@@ -230,9 +230,11 @@ function useProviderStreams (providers, query, userUpdatedAt, key = 'all') {
 }
 
 // Use provider collection (-> first success)
-function useProviderCollection (providers, query, userUpdatedAt) {
+function useProviderCollection (providers, query, userUpdatedAt, initialCollection) {
     const key = `#collection|${query.type}|${query.id}|${query.page}|${userUpdatedAt}`
-    const output = useSWR(key, async function () {
+    const output = useSWR(()=> key, async function () {
+        if (initialCollection) return initialCollection // 
+
         if (Array.isArray(providers)) {
             const collection = await fetchCollection(query, providers)
 

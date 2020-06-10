@@ -1,7 +1,5 @@
 import passportMiddleware from './_middleware/passport'
 
-import passport from 'passport'
-
 import nextConnect from 'next-connect'
 
 const router = nextConnect()

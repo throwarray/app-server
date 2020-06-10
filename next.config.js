@@ -1,4 +1,3 @@
-const withCSS = require('@zeit/next-css')
 const withImages = require('next-images')
 const withOffline = require('next-offline')
 const withFonts = require('next-fonts')
@@ -8,7 +7,7 @@ require('dotenv').config()
 
 const APP_URL = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 
-module.exports = withFonts(withOffline(withImages(withCSS({
+module.exports = withFonts(withOffline(withImages({
   poweredByHeader: false,
   target: 'serverless',
   env: {
@@ -151,4 +150,4 @@ module.exports = withFonts(withOffline(withImages(withCSS({
       // }
     ]
   }
-}))))
+})))

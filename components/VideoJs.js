@@ -1,5 +1,3 @@
-// import 'video.js/dist/video-js.min.css'
-
 import React, { PureComponent, useState, useMemo, useRef, useEffect } from 'react'
 
 import videojs from 'video.js'

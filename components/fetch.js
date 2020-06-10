@@ -1,7 +1,6 @@
-// Used in node: Don't convert to es module syntax
 const AbortController = require('abort-controller')
 
-const fetch = require('./fetcher')
+const fetch = require('isomorphic-unfetch')
 
 const { format : formatURL, parse : parseURL } = require('url')
 

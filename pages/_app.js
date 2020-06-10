@@ -1,55 +1,59 @@
 // import '../static/style.css'
 import useSWR from 'swr'
 import Head from 'next/head'
-import App from 'next/app'
 import { fetch } from '../components/fetch'
 import { Provider } from 'react-redux'
-import { initializeStore, login, loading } from '../components/store.js'
+import { useStore, login, loading } from '../components/store.js'
 
 import { batch } from 'react-redux'
 import { Layout } from '../components/Layout'
 import { useEffect } from 'react'
 
-export default class extends App {
-    constructor (...props) {
-        super(...props)
+export default function PageWrapper ({ Component, pageProps }) {
+    const store = useStore(pageProps.initialReduxState)
+    const dispatch = store.dispatch
+  
+    const { data: user, error } = useUser()
 
-        const initialState = { loading: true, user: null }
+    useEffect(function () {
+        console.log('user updated', error && 'Unauthenticated' || user)
 
-        this.reduxStore = initializeStore(initialState)
-    }
+        batch(()=> {
+            dispatch(login(error? null : user))
+            if (error || user) dispatch(loading(false))
+        })
+    }, [dispatch, error, user])
+  
+    return <div className="main-content" style={{ display: 'flex '}}>
+        <style jsx global>{`
+            body { 
+                margin: 0; 
+                background: #333;
+                color: #fff;
+                font-family: Lato;
+            }
 
-    render  () {
-        const { pageProps, Component } = this.props
-
-        return <div className="main-content" style={{ display: 'flex '}}>
-            <style jsx global>{`
-                body { 
-                    margin: 0; 
-                    background: #333;
-                    color: #fff;
-                    font-family: Lato;
-                }
-
-                a { color: inherit; }
-                
-                * { box-sizing: border-box; }
-                
-                #jwplayplay {
-                    margin: 1em auto;
-                    width: 320px !important;
-                    height: 180px !important;
-                }
-            `}</style>
-
-            <Head>
-                <title key="page-title">Loading... | App</title>
-                <meta key="page-description" name="Description" content="Loading... | App"/>
-            </Head>
-            <PageWrapper Component={Component} pageProps={pageProps} store={this.reduxStore}></PageWrapper>
-        </div>
-    }
+            a { color: inherit; }
+            
+            * { box-sizing: border-box; }
+            
+            #jwplayplay {
+                margin: 1em auto;
+                width: 320px !important;
+                height: 180px !important;
+            }
+        `}</style>
+        <Head>
+            <title key="page-title">Loading... | App</title>
+            <meta key="page-description" name="Description" content="Loading... | App"/>
+        </Head>
+        <Provider store={ store }>
+            <Layout Component={ Component } pageProps={pageProps}/>
+        </Provider>
+    </div>
 }
+
+
 
 function useUser (props) {
     return useSWR('/api/user', async function () {
@@ -65,22 +69,4 @@ function useUser (props) {
         shouldRetryOnError: false,
         ...props
     })
-}
-
-function PageWrapper ({ Component, pageProps, store }) {
-    const dispatch = store.dispatch
-    const { data: user, error } = useUser()
-
-    useEffect(function () {
-        console.log('user updated', error && 'Unauthenticated' || user)
-
-        batch(()=> {
-            dispatch(login(error? null : user))
-            if (error || user) dispatch(loading(false))
-        })
-    }, [dispatch, error, user])
-
-    return <Provider store={ store }>
-            <Layout Component={ Component } pageProps={pageProps}/>
-    </Provider>
 }
