@@ -47,16 +47,14 @@ module.exports = withFonts(withOffline(withImages({
   //   // '/terms'
   // ].concat(manifest),
   // generateInDevMode: true,
-  
-  experimental: {
-    async rewrites() {
-      return [
-        {
-          source: '/service-worker.js',
-          destination: '/_next/static/service-worker.js',
-        },
-      ]
-    },
+
+  async rewrites() {
+    return [
+      {
+        source: '/service-worker.js',
+        destination: '/_next/static/service-worker.js',
+      },
+    ]
   },
 
   workboxOpts: {

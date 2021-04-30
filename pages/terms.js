@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Head from 'next/head'
 
-export default function () {
+export default function TermsPage () {
     return <div style={{ color: '#333', background: 'ghostwhite' }}><div style={{ margin: '0 1.5em' }}>
     <Head>
         <title key="page-title">Terms of service | App</title>

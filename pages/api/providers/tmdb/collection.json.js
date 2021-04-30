@@ -3,7 +3,7 @@ import { combineURLS, Discover } from './_lib.js'
 const { promisify } = require('util')
 const getDiscoverAsync = promisify(Discover)
 
-export default async function (req, res) {
+export default async function API_TMDB_Collection (req, res) {
     const query = req.query || {}
     const page = Number(query.page) || 1
     const id = query.id || 'tmdb'

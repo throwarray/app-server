@@ -12,7 +12,6 @@ class MyDocument extends Document {
       <Html lang="en">
         <Head>
             <meta name="referrer" content="origin"/>
-            <meta name="viewport" key="viewport" content="width=device-width, initial-scale=1" />
             <link rel="preconnect" href="https://tmdb.org"></link>
             <link rel="preconnect" href="https://image.tmdb.org"></link>
             <link media="all" key="font-lato" href="https://fonts.googleapis.com/css?family=Lato&display=swap" rel="stylesheet"/>

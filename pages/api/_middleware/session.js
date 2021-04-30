@@ -1,15 +1,13 @@
-import session from 'next-session'
+import { session } from 'next-session'
 
-import connectMongo from 'connect-mongo'
+import MongoStore from 'connect-mongo'
 
-import database from './database'
-
-const MongoStore = connectMongo(session)
+import databaseMiddleware from './database'
 
 const usesHttps = (process.env.APP_URL || '').startsWith('https://')
 
-export default function (req, res, next) {
-    database(req, res, function (err) {
+export default function sessionMiddleware (req, res, next) {
+    databaseMiddleware(req, res, function (err) {
         if (err) return next(err)
 
         else if (req.session) return next()
@@ -23,10 +21,11 @@ export default function (req, res, next) {
                 secure: usesHttps,
                 sameSite: false
             },
-            store: new MongoStore({
-                // client: req.dbClient,
+            store: MongoStore.create({
+                clientPromise: req.clientPromise,
+                // autoRemove: 'interval',
+                // autoRemoveInterval: 1
                 // stringify: false,
-                mongooseConnection: req.dbClient
             })
         })(req, res, next)
     })

@@ -2,9 +2,9 @@ import passportMiddleware from './_middleware/passport'
 
 import passport from 'passport'
 
-import nextConnect from 'next-connect'
+import createRouter from './_middleware/createRouter'
 
-const router = nextConnect()
+const router = createRouter()
 
 router.use(
     function (req, res, next) {
@@ -22,9 +22,6 @@ router.use(
     
     function (req, res, next) {
         passport.authenticate('auth0', function (err, user, info) {
-            console.log('GGGGGGG', err, user, info)
-
-
             if (err) return next(err)
 
             if (!user) return res.redirect('/api/login')
@@ -42,4 +39,5 @@ router.use(
     }
 )
 
-export default (req, res)=> router.apply(req, res) 
+//export default (req, res) => router.apply(req, res)
+export default router

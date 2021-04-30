@@ -46,6 +46,7 @@ export default function PageWrapper ({ Component, pageProps }) {
         <Head>
             <title key="page-title">Loading... | App</title>
             <meta key="page-description" name="Description" content="Loading... | App"/>
+            <meta name="viewport" key="viewport" content="width=device-width, initial-scale=1" />
         </Head>
         <Provider store={ store }>
             <Layout Component={ Component } pageProps={pageProps}/>

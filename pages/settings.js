@@ -6,7 +6,7 @@ import Head from 'next/head'
 
 function refreshUserState () { trigger('/api/user') }
 
-export default function ({ providers, user }) {
+export default function SettingsPage ({ providers, user }) {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine
     
     return <>

@@ -4,19 +4,20 @@ let client
 
 initializeDbModels()
 
-export default async function database (req, res, next) {
+export default async function databaseMiddleware (req, res, next) {
 	if (!client) {
 		client = mongoose.connect(process.env.DB_URL, { 
 			useNewUrlParser: true,
 			useUnifiedTopology: true, 
 			useFindAndModify: false
-		})
+		}).then(m => m.connection.getClient())
 	}
-	
+
 	try {
 		await client
 		req.db = mongoose.connection.db
 		req.dbClient = mongoose.connection
+		req.clientPromise = client
 		next()
 	} catch(e) {
 		next(e)
@@ -121,7 +122,7 @@ function initializeDbModels () {
 //   useUnifiedTopology: true,
 // })
 
-// export default async function database (req, res, next) {
+// export default async function databaseMiddleware (req, res, next) {
 //   if (!client.isConnected()) await client.connect()
 
 //   req.dbClient = client

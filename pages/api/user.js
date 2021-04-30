@@ -1,8 +1,8 @@
 import passportMiddleware from './_middleware/passport'
 
-import nextConnect from 'next-connect'
+import createRouter from './_middleware/createRouter'
 
-const router = nextConnect()
+const router = createRouter()
 
 router.use(
     passportMiddleware,    
@@ -34,4 +34,5 @@ router.use(
     }
 )
 
-export default (req, res)=> router.apply(req, res) 
+//export default (req, res) => router.apply(req, res)
+export default router

@@ -1,3 +1,3 @@
-export default function (req, res) {
+export default function API_TMDB_Streams (req, res) {
     res.json([]) // FIXME
 }

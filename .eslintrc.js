@@ -8,7 +8,7 @@ module.exports = {
 		"eslint:recommended"
 		// "plugin:react/recommended"
 	],
-	"parser": "babel-eslint",
+	"parser": "@babel/eslint-parser",
 	"parserOptions": {
 		"sourceType": "module",
 		"ecmaVersion":8,

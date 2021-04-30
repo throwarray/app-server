@@ -1,14 +1,14 @@
-import session from './session'
+import sessionMiddleware from './session'
 import passport from 'passport'
 import Auth0Strategy from 'passport-auth0'
-import nextConnect from 'next-connect'
-import flash from 'connect-flash'
+import createRouter from './createRouter'
 
+// import flash from 'connect-flash'
 // import bcrypt from 'bcryptjs'
 // import { Strategy as LocalStrategy } from 'passport-local'
 // import { ObjectId } from 'mongodb'
 
-function compat (req, res, next) {
+function compatMiddleware (req, res, next) {
     res.redirect = (code, path) => {
         let location = path
         let status = code
@@ -48,13 +48,13 @@ passport.use(
     })
 )
 
-const router = nextConnect()
+const router = createRouter()
 
 
 router.use(
-    compat, 
-    session, 
-    flash(), 
+    compatMiddleware, 
+    sessionMiddleware, 
+    // flash(), 
     passport.initialize(), 
     passport.session()
 )

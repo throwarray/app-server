@@ -21,7 +21,7 @@ function getTrailer (item) {
     //return trailer
 }
 
-export default async function (req, res) {
+export default async function API_TMDB_Meta (req, res) {
     let id
     let season = req.query.season === void 0? 1 : Number(req.query.season)
     let mediaType = StrOrVoid(req.query.type)

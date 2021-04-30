@@ -6,7 +6,7 @@ import Head from 'next/head'
 
 import { useProviderCollection } from '../../components/meta'
 
-export default function (props) {
+export default function CollectionItemPage (props) {
     const { query = props.router.query } = props
     const id = query.id
     const title = `Collection ${ query.title || id || '' } | App`

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Head from 'next/head'
 
-export default function () {
+export default function PrivacyPage () {
     return <div style={{ color: '#333', background: 'ghostwhite' }}>
         
     <Head>

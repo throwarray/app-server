@@ -1,9 +1,8 @@
-import connectNext from 'next-connect'
-
+import createRouter from '../../_middleware/createRouter'
 import passport from '../../_middleware/passport'
 import mongoose from 'mongoose'
 
-const router = connectNext()
+const router = createRouter()
 
 router.use(
     passport,
@@ -85,4 +84,5 @@ router.delete(async function (req, res) {
     }
 })
 
-export default (req, res) => router.apply(req, res)
+//export default (req, res) => router.apply(req, res)
+export default router

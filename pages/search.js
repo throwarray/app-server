@@ -18,7 +18,7 @@ function Button ({ children }) {
 }
 
 
-export default function () {
+export default function SearchPage () {
     return <div>
         <Head>
             <title key="page-title">Search | App</title>

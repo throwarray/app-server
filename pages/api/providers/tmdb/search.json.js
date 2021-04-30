@@ -3,7 +3,7 @@ import { promisify } from 'util'
 const getSearchAsync = promisify(Search)
 
 // WIP
-export default async function (req, res) {
+export default async function API_TMDB_Search (req, res) {
     // let season = req.query.season === void 0 ? 1 : Number(req.query.season)
 
     let mediaType = String(req.query.type) || void 0

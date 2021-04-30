@@ -1,8 +1,7 @@
-import connectNext from 'next-connect'
-
+import createRouter from '../../_middleware/createRouter'
 import passport from '../../_middleware/passport'
 
-const router = connectNext()
+const router = createRouter()
 
 router.use(passport)
 
@@ -12,7 +11,7 @@ router.get(async function (req, res, next) {
     let isError
 
     const { query = {}, db, user } = req
-    const authed = user && user.user_id || ''
+    const user_id = user && user.user_id || ''
     const id = query.id || ''
 
     switch (id) {
@@ -39,9 +38,9 @@ router.get(async function (req, res, next) {
         break
 
         case 'system-fav': 
-            if (authed) providers = await db
+            if (user_id) providers = await db
                 .collection('playlistitems')
-                .find({ user: authed, playlist: 'system-fav' }).toArray()
+                .find({ user: user_id, playlist: 'system-fav' }).toArray()
             
             providers = providers || []
 
@@ -57,9 +56,9 @@ router.get(async function (req, res, next) {
         break
         
         case 'system-providers':
-            if (authed) providers = await db
+            if (user_id) providers = await db
                 .collection('providers')
-                .find({ user: authed }).toArray() || []
+                .find({ user: user_id }).toArray() || []
                 
             else providers = []
 
@@ -80,7 +79,7 @@ router.get(async function (req, res, next) {
         break
         
         case 'system-playlists':
-            if (authed) providers = await db.collection('collections').find({ user: authed }).toArray() || []
+            if (user_id) providers = await db.collection('collections').find({ user: user_id }).toArray() || []
             else providers = []
 
             collection = {
@@ -114,4 +113,5 @@ router.get(async function (req, res, next) {
     }
 })
 
-export default (req, res) => router.apply(req, res)
+//export default (req, res) => router.apply(req, res)
+export default router
