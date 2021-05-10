@@ -22,7 +22,8 @@
 	// "forwardPorts": [3000, 27017],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
+	// https://code.visualstudio.com/docs/remote/containers-advanced#_use-clone-repository-in-container-volume
+	"postCreateCommand": "sudo chown node node_modules && sudo chown node .next && npm install",
 
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "node"

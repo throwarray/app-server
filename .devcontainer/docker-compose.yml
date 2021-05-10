@@ -16,6 +16,9 @@ services:
 
     volumes:
       - ..:/workspace:cached
+      # node_modules and .next will be empty folders on the host
+      - app-server-node_modules:/workspace/node_modules
+      - app-server-next:/workspace/.next
 
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
@@ -46,3 +49,5 @@ services:
 
 volumes:
   mongodb-data:
+  app-server-node_modules:
+  app-server-next:
