@@ -4,10 +4,12 @@ const { URL } = require('url')
 
 require('dotenv').config()
 
+const ANALYZE = process.env.ANALYZE === 'true'
+const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: ANALYZE })
 const APP_URL = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 const HOST_NAME = new URL(APP_URL).host
 
-module.exports = (withOffline(withImages({
+module.exports = withBundleAnalyzer(withOffline(withImages({
   poweredByHeader: false,
   target: 'serverless',
   env: {
