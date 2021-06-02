@@ -1,35 +1,42 @@
 import mongoose from 'mongoose'
 
-let client
+// Store the pending db connection as a global to handle hmr
+// https://github.com/ashconnell/next.js/commit/45fbe64829a0a6b781837b0c7613f73308ba088c
 
-initializeDbModels()
+let cached = global.mongo
 
-export default async function databaseMiddleware (req, res, next) {
-	if (!client) {
-		client = mongoose.connect(process.env.DB_URL, { 
-			useNewUrlParser: true,
-			useUnifiedTopology: true, 
-			useFindAndModify: false
-		}).then(m => m.connection.getClient())
-	}
-
+export default async function databaseMiddleware (req, _res, next) {
 	try {
-		await client
+		if (!cached) {
+			// connection = mongoose.createConnection(process.env.DB_URL)
+			// connection.model('ModelName', modelSchema)
+
+			cached = global.mongo = mongoose.connect(process.env.DB_URL, { 
+				useNewUrlParser: true,
+				useUnifiedTopology: true, 
+				useFindAndModify: false
+			}).then(m => m.connection.getClient())
+			
+			initializeDbModels(mongoose.connection)
+		}
+
+		await cached
+
 		req.db = mongoose.connection.db
 		req.dbClient = mongoose.connection
-		req.clientPromise = client
+		req.clientPromise = cached
+
 		next()
 	} catch(e) {
 		next(e)
 	}
 }
 
+// TODO Would prefer not to use mongoose.
+// Do validation manually with joi, ajv... 
+// Ensure the compound index is kept.
 
-
-
-// FIXME
-
-function initializeDbModels () {
+function initializeDbModels (/*connection*/) {
 	if (!mongoose.models.providers) {
 		const providerId = (required, wildcard) => { 
 			const reg = wildcard? /^(?:(?:\w+\b)|\*)$/ : /^\w+\b$/
@@ -110,23 +117,3 @@ function initializeDbModels () {
 		}
 	}))
 }
-
-
-
-// import { MongoClient } from 'mongodb'
-// import { parse as parseURL } from 'url'
-// const DB_NAME = parseURL(process.env.DB_URL).pathname.substr(1)
-
-// const client = new MongoClient(process.env.DB_URL, {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// })
-
-// export default async function databaseMiddleware (req, res, next) {
-//   if (!client.isConnected()) await client.connect()
-
-//   req.dbClient = client
-//   req.db = client.db(DB_NAME)
-
-//   next()
-// }

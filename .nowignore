@@ -1,3 +1,8 @@
 idea
+node_modules
+.next
+.vscode
+.git
+*.env
 *.pem
 **/ffmpeg.exe

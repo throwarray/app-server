@@ -8,7 +8,7 @@
       "REDIRECT_URI": "@redirect_uri",
       "POST_LOGOUT_REDIRECT_URI": "@post_logout_redirect_uri",
       "AUTH0_CLIENT_SECRET": "@auth0_client_secret",
-      "SESSION_COOKIE_SECRET": "@session_cookie_secret",
+      "SESSION_SECRET": "@session_secret",
       "TMDB_V3": "@tmdb_v3",
       "TMDB_V4": "@tmdb_v4"
     }

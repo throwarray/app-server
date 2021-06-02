@@ -5,6 +5,7 @@ const { URL } = require('url')
 require('dotenv').config()
 
 const APP_URL = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
+const HOST_NAME = new URL(APP_URL).host
 
 module.exports = (withOffline(withImages({
   poweredByHeader: false,
@@ -16,10 +17,10 @@ module.exports = (withOffline(withImages({
     AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
     AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
     AUTH0_SCOPE: 'openid profile',
-    REDIRECT_URI: process.env.REDIRECT_URI || new URL('/api/callback', APP_URL),
-    POST_LOGOUT_REDIRECT_URI: process.env.POST_LOGOUT_REDIRECT_URI || APP_URL,
-    SESSION_COOKIE_SECRET: process.env.SESSION_SECRET || process.env.SESSION_COOKIE_SECRET,
-    SESSION_COOKIE_LIFETIME: 7200, // 2 hours
+    REDIRECT_URI: new URL(process.env.REDIRECT_URI || '/api/callback', APP_URL).toString(),
+    POST_LOGOUT_REDIRECT_URI: new URL(process.env.POST_LOGOUT_REDIRECT_URI || '/', APP_URL).toString(),
+    SESSION_SECRET: process.env.SESSION_SECRET || 'keyboard cat',
+    SESSION_COOKIE_LIFETIME: 30 * 86400000, // 30 days
     TMDB_V3: process.env.TMDB_V3,
     TMDB_V4: process.env.TMDB_V4
   },
@@ -36,9 +37,10 @@ module.exports = (withOffline(withImages({
   },
   webpackDevMiddleware: config => {
     config.watchOptions = {
+      ...(config.watchOptions || {}),
       poll: 1000,
       aggregateTimeout: 300,
-      ignored: /node_modules/
+      ignored: /^node_modules$/
     }
 
     return config

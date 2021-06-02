@@ -9,17 +9,25 @@ const router = createRouter()
 router.use(
     passportMiddleware, 
     function (req, res, next) {
-        if (req.isAuthenticated()) res.redirect('/')
-        else next()
-    },
-    function (req, res, next) {
-        passport.authenticate('auth0', {
-            scope: 'openid email profile',
-            failureRedirect: '/api/login',
-            successRedirect: '/'
-        })(req, res, next)
+        const returnTo = req.query && req.query.returnTo || '/'
+
+        // Already authenticated
+        if (req.isAuthenticated()) {
+            res.redirect(new URL(returnTo || '/', process.env.APP_URL).toString())
+            return
+        }
+
+        // Save the returnTo URL
+        req.session.returnTo = returnTo
+        
+        // Save the session manually because serverless doesn't support fire and forget.
+        // Likely redundant because of the passport.authenticate
+        req.session.save(function (_error) {
+            // Authenticate
+            passport.authenticate('auth0', { scope: 'openid email profile' })(req, res, next)
+        })
+        
     }
 )
 
-//export default (req, res) => router.apply(req, res)
 export default router
