@@ -9,7 +9,8 @@
     "dev": "nodemon -L NODE_ENV=development NEXT_TELEMETRY_DISABLED=1 index.js",
     "build": "cross-env NEXT_TELEMETRY_DISABLED=1 next build",
     "start": "cross-env NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 node index.js",
-    "lint": "eslint ."
+    "lint": "eslint . --ext ts --ext tsx --ext js --ext jsx --ext mjs",
+    "type-check": "tsc --pretty --noEmit"
   },
   "author": "",
   "license": "ISC",
@@ -59,12 +60,16 @@
   },
   "devDependencies": {
     "@babel/core": "^7.14.0",
-    "@babel/eslint-parser": "^7.13.14",
+    "@types/node": "^15.6.1",
+    "@types/react": "^17.0.8",
+    "@types/react-dom": "^17.0.5",
+    "@typescript-eslint/eslint-plugin": "^4.25.0",
+    "@typescript-eslint/parser": "^4.25.0",
     "cross-env": "^7.0.3",
     "eslint": "^7.25.0",
     "eslint-plugin-react": "^7.23.2",
     "eslint-plugin-react-hooks": "^4.2.0",
     "nodemon": "^2.0.7",
-    "webpack": "^4.46.0"
+    "typescript": "^4.3.2"
   }
 }

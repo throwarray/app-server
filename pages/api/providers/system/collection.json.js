@@ -5,7 +5,7 @@ const router = createRouter()
 
 router.use(passport)
 
-router.get(async function (req, res, next) {
+router.get(async function (req, res, _next) {
     let collection
     let providers
     let isError

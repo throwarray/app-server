@@ -1,8 +1,8 @@
-const AbortController = require('abort-controller')
+import AbortController from 'abort-controller'
 
-const fetch = require('isomorphic-unfetch')
+import fetch from 'isomorphic-unfetch'
 
-const { format : formatURL, parse : parseURL } = require('url')
+import { format as formatURL, parse as parseURL } from 'url'
 
 const { stringify: stringifyQuery } = require('querystring')
 
