@@ -1,5 +1,5 @@
-# Update the VARIANT arg in docker-compose.yml to pick a Node version: 10, 12, 14
-ARG VARIANT=12
+# Update the VARIANT arg in docker-compose.yml to pick a Node version: 10, 12, 14,16
+ARG VARIANT=16
 FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:0-${VARIANT}
 
 # Install MongoDB command line tools
@@ -26,5 +26,5 @@ RUN if [ "$USER_GID" != "1000" ] || [ "$USER_UID" != "1000" ]; then groupmod --g
 # [Optional] Uncomment if you want to install more global node modules
 # RUN su node -c "npm install -g <your-package-list-here>"
 
-
-
+# [Optional] Uninstall global node modules and update npm
+RUN su node -c "npm uninstall -g eslint && npm install -g npm"

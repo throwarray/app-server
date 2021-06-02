@@ -19,7 +19,8 @@
 	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [3000, 27017],
+	"forwardPorts": [3000, 27017],
+	
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// https://code.visualstudio.com/docs/remote/containers-advanced#_use-clone-repository-in-container-volume

@@ -1,4 +1,6 @@
-idea/**
+idea
 .next
 .vscode
 node_modules
+.now
+.git
