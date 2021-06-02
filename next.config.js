@@ -1,13 +1,12 @@
 const withImages = require('next-images')
 const withOffline = require('next-offline')
-const withFonts = require('next-fonts')
 const { URL } = require('url')
 
 require('dotenv').config()
 
 const APP_URL = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '')
 
-module.exports = withFonts(withOffline(withImages({
+module.exports = (withOffline(withImages({
   poweredByHeader: false,
   target: 'serverless',
   env: {
