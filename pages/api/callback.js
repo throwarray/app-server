@@ -6,13 +6,16 @@ import createRouter from './_middleware/createRouter'
 
 import { URL } from 'url'
 
+import { assignToken } from './_middleware/xsrf'
+
 const router = createRouter()
 
+// function allowResponse (_req, res, next) {
+//     res.setHeader('Access-Control-Allow-Origin', '*')
+//     next()
+// },
+
 router.use(
-    function allowResponse (_req, res, next) {
-        res.setHeader('Access-Control-Allow-Origin', '*')
-        next()
-    },
     passportMiddleware, 
     function verifyResponse (req, res, next) {
         if (req.isAuthenticated()) return next()
@@ -21,13 +24,14 @@ router.use(
             if (err) return next(err)
 
             if (!user) return res.redirect('/api/login')
-            
+
             req.logIn(user, function (err) {
                 if (err) return next(err)
                 next()
             })
         })(req, res, next)
     },
+    assignToken,
     function followRedirect (req, res) {
         const returnTo = req.session.returnTo
 

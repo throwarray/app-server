@@ -39,13 +39,13 @@ export default async function databaseMiddleware (req, _res, next) {
 function initializeDbModels (/*connection*/) {
 	if (!mongoose.models.providers) {
 		const providerId = (required, wildcard) => { 
-			const reg = wildcard? /^(?:(?:\w+\b)|\*)$/ : /^\w+\b$/
+			const reg = wildcard? /^(?:\w{0,16}|\*)$/ : /^\w{0,16}$/
 		
 			return {
 				type: String,
 				required: !!required,
 				maxLength: 16, 
-				minLength: 1,
+				minLength: 0,
 				validate: {
 					validator: v => reg.test(v),
 					message: props => `${props.value} is not a valid provider id!`

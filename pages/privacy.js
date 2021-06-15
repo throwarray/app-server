@@ -1,18 +1,19 @@
 import Link from 'next/link'
 import Head from 'next/head'
+import Typography from '@material-ui/core/Typography'
+import { Container } from '@material-ui/core'
 
 export default function PrivacyPage () {
-    return <div style={{ color: '#333', background: 'ghostwhite' }}>
+    return <Container maxWidth={'md'} style={{ height: '100%' }}>
         
     <Head>
         <title key="page-title">Privacy Policy | App</title>
         <meta key="page-description" name="Description" content="Privacy Policy | App"/>
     </Head>
 
-    <div style={{ margin: '0 1.5em' }}>
-        <h2 style={{ margin: 0 }}>PRIVACY POLICY</h2>
-
-        <h5>Last Revised: September 28th 2019</h5>
+    <div>
+        <Typography variant="h3">Privacy Policy</Typography>
+        <Typography variant="body1">Last Revised: September 28th 2019</Typography>
         
         <p>
         Our privacy policy applies to information we collect when you use or access our website, application or services. 
@@ -21,7 +22,7 @@ export default function PrivacyPage () {
         We encourage you to review our privacy policy whenever you access our services to stay informed about our information practices and the ways you can help protect your privacy.
         </p>
 
-        <h3>Collection of Information</h3>
+        <Typography variant="h4">Collection of Information</Typography>
         
         <b>Information You Provide to Us</b>
             
@@ -41,7 +42,7 @@ export default function PrivacyPage () {
                 or otherwise consent to the collection of this information.</li>
             <li>Information collected by cookies and other tracking technologies: 
                 We may use various technologies to collect information including cookies or other storage methods. 
-                We may also collect information using web beacons (also known as "tracking pixels").
+                We may also collect information using web beacons (also known as &quot;tracking pixels&quot;).
             </li>
         </ul>
             
@@ -51,7 +52,7 @@ export default function PrivacyPage () {
         we may combine information obtained from other sources (for example, a third-party service whose application you have authorized 
         or used to sign in) and combine that with information we collect through our services.</p>
         
-        <h3>Use of Information</h3>
+        <Typography variant="h4">Use of Information</Typography>
         
         <b>We use information about you for various purposes, including to:</b>
 
@@ -66,18 +67,16 @@ export default function PrivacyPage () {
 
         <p>By accessing and using our services, you consent to the processing and transfer of your information in and to the United States and other countries.</p>
         
-        <h3>Sharing of Information</h3>
+        <Typography variant="h4">Sharing of Information</Typography>
         
         <b>We may share personal information about you as follows:</b>
         
         <ul>
             <li>With third party vendors and other service providers who need access to your information to carry out work on our behalf.</li>
             <li>If we believe disclosure is reasonably necessary to comply with any applicable law, regulation, legal process or governmental request.</li>
-            <li>To enforce applicable user agreements or policies, including our 
-                <Link href="/terms">
+            <li>To enforce applicable user agreements or policies, including our <Link href="/terms">
                     <a title="Terms of Service" aria-label="Click to view terms of service">Terms of Service</a>
-                </Link> 
-                and to protect us, our users or the public from harm or illegal activities.</li>
+            </Link> and to protect us, our users or the public from harm or illegal activities.</li>
             <li>In connection with any merger, sale of our assets, financing or acquisition of all or a portion of our business to another company; and</li>
             <li>If we notify you through our services (or in our privacy policy) that the information you provide will be shared in a particular manner and you provide such information.</li>
         </ul>
@@ -88,13 +87,13 @@ export default function PrivacyPage () {
             
         <p>We may allow third parties to provide analytics services. These third parties may use cookies, web beacons and other technologies to collect information about your use of the services and other websites, including your IP address, web browser, pages viewed, time spent on pages, links clicked and conversion information. This information may be used by us and third parties to, among other things, analyze and track data, determine the popularity of certain content and other websites and better understand your online activity. Our privacy policy does not apply to, and we are not responsible for, third party cookies, web beacons or other tracking technologies and we encourage you to check the privacy policies of these third parties to learn more about their privacy practices.</p>
         
-        <h3>Security</h3>
+        <Typography variant="h4">Security</Typography>
         
         <p>We take reasonable measures to help protect personal information from loss, theft, misuse and unauthorized access, disclosure, 
         alteration and destruction.
         </p>
         
-        <h3>Your Information Choices</h3>
+        <Typography variant="h4">Your Information Choices</Typography>
         
         <b>Location Information</b>
         
@@ -105,7 +104,7 @@ export default function PrivacyPage () {
         
         <p>You may opt out of receiving any promotional emails from us by following the instructions in those emails. If you opt out, we may still send you non-promotional communications, such as those about your account or our ongoing business relations.</p>
             
-        <h3>Contact Us</h3>
+        <Typography variant="h4">Contact Us</Typography>
         
         <p>If you have any questions about this privacy policy, please contact us at:</p>  
         
@@ -117,5 +116,5 @@ export default function PrivacyPage () {
         </div>
 
         </div>
-    </div>
+    </Container>
 }

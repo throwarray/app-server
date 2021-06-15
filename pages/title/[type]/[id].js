@@ -1,25 +1,43 @@
 import { useReducer, useCallback, useEffect, useState, useMemo } from 'react'
-
 import Head from 'next/head'
-
 import router from 'next/router'
-
 import LazyLoad from 'react-lazy-load'
-
 import dynamic from 'next/dynamic'
-
-import { Spinner } from '../../../components/Layout'
-
 import { parseIdPrefix, filterProviders, metaQueryItem } from '../../../components/utils'
-
 import { keySystems, matchedMime, useProviderMetas, useProviderStreams, useFilteredProviders } from '../../../components/meta'
 import useSWR, { mutate } from 'swr'
-
 import { fetch, formBody } from '../../../components/fetch'
 
-// import 'video.js/dist/video-js.min.css' // breaks routing in dev?
+import clsx from 'clsx'
+import CircularProgress from '@material-ui/core/CircularProgress'
+import { makeStyles, createStyles } from '@material-ui/core/styles'
+import Button from '@material-ui/core/Button'
+import IconFavorite from '@material-ui/icons/Favorite'
+import IconTheaters from '@material-ui/icons/Theaters'
+import Typography from '@material-ui/core/Typography'
+import IconMovie from '@material-ui/icons/Movie'
+import { useToken } from '../../../components/xsrf'
 
 const Video = dynamic(() => import('../../../components/VideoJs'), { ssr: false })
+
+const useStyles = makeStyles((_theme) => {
+    return createStyles({
+        isFavorited: { color: 'red' },
+        btn: {
+            background: 'orange',
+            boxShadow: '1px 1px 3px darkorange',
+            textOverflow: 'ellipsis',
+            overflow: 'hidden',
+            maxWidth: '200px',
+            whiteSpace: 'nowrap',
+            padding: '1em',
+            fontSize: '1em',
+            borderRadius: '4px',
+            color: '#333',
+            margin: '0.25em',
+        }
+    })
+})
 
 function playVideoJs (player, fileIn) {
     if (!player) return
@@ -78,7 +96,7 @@ function metaReducer (prevState = {}, action) {
     if (actionToKeyMap.has(actionType)) {
         const keyname = actionToKeyMap.get(actionType)
 
-        console.log('Dispatch action', actionType, action.payload)
+        console.log(actionType, action.payload)
 
         if (typeof keyname === 'function') return keyname(nextState, action) 
         
@@ -92,41 +110,25 @@ function metaReducer (prevState = {}, action) {
     return prevState
 }
 
-const msgStyles = {
-    background: 'orange',
-    alignSelf: 'baseline',
-    padding: '1em',
-    textOverflow: 'ellipsis',
-    overflow: 'hidden',
-    maxWidth: '200px',
-    whiteSpace: 'nowrap',
-    fontSize: '1em',
-    borderRadius: '3px',
-    boxShadow: '1px 1px 3px darkorange',
-    color: '#333',
-    margin: '0.25em',
-}
 
+function AddToFavs ({ query, poster }) {
+    const classes = useStyles()
+    const token = useToken()
 
+    const route = '/api/user/fav'
 
+    const getHasFav = route + `?id=${encodeURIComponent(query.id)}` // &playlist=system-fav
 
+    const { isValidating, data, error } = useSWR(
+        ()=> token? getHasFav : null, 
+        async (route)=> await (await fetch(route)).json(), {
+            revalidateOnFocus: false,
+            refreshWhenHidden: false,
+            shouldRetryOnError: false 
+        }
+    )
 
-function AddToPlaylist ({ query, poster }) {
-    const route = '/api/providers/system/fav'
-    const getHasFav = route + `?id=${encodeURIComponent(query.id)}&playlist=system-fav`
-
-    const { isValidating, data, error } = useSWR(getHasFav, async function (route) {
-        const response = await fetch(route)
-        const json = await response.json()
-
-        return json
-    }, {
-        revalidateOnFocus: false,
-        refreshWhenHidden: false,
-        shouldRetryOnError: false 
-    })
-
-    const hasFav = data && data.value === true
+    const hasFav = !error && data && data.value === true
 
     const [isUpdating, setUpdating] = useState()
 
@@ -143,6 +145,7 @@ function AddToPlaylist ({ query, poster }) {
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
             'body': formBody(JSON.parse(JSON.stringify({ // strip void 0
+                _csrf: token,
                 id: query.id,
                 title: query.title,
                 year: query.year,
@@ -162,35 +165,32 @@ function AddToPlaylist ({ query, poster }) {
             setUpdating(false)
         } , ()=> setUpdating(false))
 
-    }, [getHasFav, poster, query, isUpdating, isValidating, hasFav])
+    }, [getHasFav, poster, query, isUpdating, isValidating, hasFav, token])
 
     if (isValidating && !data) return null
 
-    return <button disabled={isValidating || isUpdating} className="material-icons" onClick={handleClick} style={{
-        ...msgStyles,
-        color: hasFav? 'red' : 'initial'
-    }}>
-        favorite
-    </button>
+    return <Button
+        variant="contained"
+        size="small"
+        startIcon={<IconFavorite className={clsx({ [classes.isFavorited]: !!hasFav })}/>}
+        title="Favorite"
+        role="button"
+        aria-label="Favorite" 
+        disabled={isValidating || isUpdating} 
+        onClick={handleClick}
+        className={classes.btn}
+    >Favorite</Button>
 }
 
-
-
-
-
-
-
-
-
-
-
-export default function InitialMeta({ providers: userProviders, router, userUpdatedAt }) {    
+export default function InitialMeta({ /*parsingQuery,*/ providers: userProviders, router, userUpdatedAt }) {    
     // Filter query parameters
     const routerQuery = router.query
     const queryId = routerQuery.id
     const queryType = routerQuery.type
     const shouldUseTmdb = routerQuery.tmdb_id !== 'false' && routerQuery.tmdb_id !== false
     
+
+
     // Filter providers that handle the query id
     const [metaProviders, defaultMetaProvider] = useMemo(function () {
         const prefix = parseIdPrefix(queryId)
@@ -406,6 +406,9 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
 
     const { setSeason, setSelected, setResults } = actions
 
+    const classes = useStyles() 
+    // Passing this as a prop will likely cause stale layout data in child components.
+
     const handleChange = useCallback(function (evt) { // handle meta provider change
         setSelected(evt.target.value)
     }, [setSelected])
@@ -494,16 +497,25 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
                     objectFit: 'contain',
                     objectPosition: 'top',
                     background: meta.background || 'rgba(255,255,255,0.1)'
-                }} src={meta.poster} alt=""></img>
+                }} src={meta.poster}></img>
             </div>
             <div style={{ flex: '1 0', height: '300px', display: 'flex', flexDirection: 'column', maxWidth: '100%' }}>
-                <h3>{meta.title || query.title }</h3>
+                <Typography variant="h5">
+                    {meta.title || query.title }
+                </Typography>
+                
                 <div style={{ maxWidth: '680px', overflow: 'auto', flex: 1 }}>
                     { meta.description }
-                    { status === 'rejected'?  <div>Error</div>: status === 'pending'? <Spinner></Spinner>: null }
+                    { 
+                    status === 'rejected'?  
+                        <Typography variant="body1">Error</Typography>: 
+                    status === 'pending'? 
+                        <CircularProgress/>:
+                    null
+                    }
                 </div>
                 <div style={{display: 'flex' }}>
-                    <select aria-label="Select meta provider" title="Select meta provider" style={{ ...msgStyles, textAlign: 'center', minWidth: '48px' }} name="meta-select" value={selected} onChange={handleChange}>
+                    <select aria-label="Select meta provider" title="Select meta provider" className={classes.btn} style={{ textAlign: 'center', minWidth: '48px' }} name="meta-select" value={selected} onChange={handleChange}>
                         { tmdb_meta && <option key="tmdb" value="tmdb">{'TMDb'}</option> || null }
                         {
                             providers.map(({ id, title })=> {
@@ -513,35 +525,53 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
                     </select>
 
                     {/* Handle season select when video has list of seasons */}
-                    <SelectSeason meta={meta} value={season} handleSeasonSelect={handleSeasonSelect}></SelectSeason>
+                    <SelectSeason classes={classes} meta={meta} value={season} handleSeasonSelect={handleSeasonSelect}/>
 
-                    <AddToPlaylist query={query} poster={meta.poster}></AddToPlaylist>
+                    <AddToFavs query={query} poster={meta.poster}></AddToFavs>
 
                     {
                         // Meta has trailer
-                        trailer && <button title="Play trailer" role="button" aria-label="Play trailer" style={msgStyles} title={ trailer.src || trailer.url || trailer.file || trailer.id } onClick={function () {
-                            actions.setSource({
-                                ...trailer, 
-                                title: trailer.title || meta.title
-                            })
-                        }}>
-                        Trailer
-                        </button> || null
+                        trailer && <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={<IconTheaters/>}
+                            role="button" 
+                            aria-label="Play trailer" 
+                            className={classes.btn}
+                            title={ trailer.src || trailer.url || trailer.file || trailer.id || 'Play trailer' } 
+                            onClick={function () {
+                                actions.setSource({
+                                    ...trailer, 
+                                    title: trailer.title || meta.title
+                                })
+                            }}
+                        >
+                            Trailer
+                        </Button> || null
                     }
 
                     {   // Non series or has direct link
                         prefix && handlesPrefix && (playDirect || query.type === 'video' || query.type === 'movie') && 
-                            <button className="material-icons" title="Watch now" role="button" aria-label="Watch now" style={msgStyles} title={ playDirect || meta.id } onClick={function () {
+                        <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={<IconMovie/>}
+                            role="button" 
+                            aria-label="Watch now" 
+                            className={classes.btn}
+                            title={ playDirect || meta.id || 'Watch now' }
+                            onClick={function () {
                                 actions.setSource({
                                     ...meta ,
                                     title: meta.title
                                 })
-                            }}>
-                            play_arrow
-                            </button> || null
+                            }}
+                        >
+                            Watch now
+                        </Button>|| null
                     }
                     
-                    { prefix && !handlesPrefix && <div style={{...msgStyles, padding: '0.15em' }}>
+                    { prefix && !handlesPrefix && <div className={classes.btn} style={{ padding: '0.15em' }}>
                         No stream provider for { prefix }
                     </div> || null }
                 </div>
@@ -549,7 +579,8 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
         </div>
     
         {/* Display episode list */}
-        { status === 'fulfilled' && meta && meta.seasons && <Seasons 
+        { status === 'fulfilled' && meta && meta.seasons && <Seasons
+            classes={classes}
             player={player}
             meta={meta} 
             results={results} 
@@ -562,14 +593,14 @@ function Meta ({ player, tmdb_meta, query, providers, actions, selected, userPro
 }
 
 
-function SelectSeason ({ meta, value, handleSeasonSelect }) {
+function SelectSeason ({ classes, meta, value, handleSeasonSelect }) {
     const seasons = meta && Array.isArray(meta.seasons) && meta.seasons
     const selectedSeason = value === void 0?  meta.season : value
 
     return seasons && <select
         title="Select season"
         aria-label="Select season"
-        style={msgStyles} 
+        className={classes.btn}
         name="season-select" 
         value={selectedSeason}
         onChange={handleSeasonSelect}>
@@ -583,7 +614,10 @@ function SelectSeason ({ meta, value, handleSeasonSelect }) {
     </select> || null
 }
 
-function Seasons ({ meta, results, actions, player, userProviders }) {
+
+
+
+function Seasons ({ meta, results, actions, player, userProviders, classes }) {
     // Return a sorted array of episodes for current season
     const metaSeason = meta.season
     const episodes = useMemo(function () {
@@ -635,6 +669,7 @@ function Seasons ({ meta, results, actions, player, userProviders }) {
                     debounce={false}
                     throttle={350}
                 ><EpisodeMeta
+                    classes={classes}
                     player={player}
                     actions={actions}
                     userProviders={userProviders}
@@ -649,7 +684,7 @@ function Seasons ({ meta, results, actions, player, userProviders }) {
     </div>
 }
 
-function EpisodeMeta ({ series, episode, seasonNumber, episodeNumber, actions, userProviders }) {
+function EpisodeMeta ({ classes, series, episode, seasonNumber, episodeNumber, actions, userProviders }) {
     const [selected, setSelected] = useState()    
     const provider = series.provider
     
@@ -708,7 +743,9 @@ function EpisodeMeta ({ series, episode, seasonNumber, episodeNumber, actions, u
                 }}></div>
                 }
             </div>
-            <div style={{ flex: '1', textOverflow: 'ellipsis', margin: '1em' }}>S{ seasonNumber }E{ episodeNumber } | { meta.title }</div>
+            <Typography style={{ flex: '1', textOverflow: 'ellipsis', margin: '1em', minWidth: '200px' }}>
+                { `S${ seasonNumber }E${ episodeNumber } | ${ meta.title }` }
+            </Typography>
             <div role="radiogroup" tabIndex="0" style={{
                 display: 'flex',
                 overflow: 'hidden',
@@ -753,28 +790,45 @@ function EpisodeMeta ({ series, episode, seasonNumber, episodeNumber, actions, u
             scrollbarColor: 'black #333'
         }}>{ meta.description }</div>
 
-        <div style={{ display: 'flex' }}>
-            { trailer && <button style={msgStyles} title={playTrailerLabelText} role="button" aria-label={playTrailerLabelText} style={msgStyles} onClick={function () {
-                actions.setSource({ 
-                    ...trailer, 
-                    episode: episodeNumber, 
-                    season: seasonNumber,
-                    title: trailer.title || meta.title,
-                    series: series.title
-                })
-            }}>Trailer</button> || null }
+        <div style={{ display: 'flex', alignItems: 'baseline' }}>
+            { trailer && <Button
+                variant="contained"
+                size="small"
+                startIcon={<IconTheaters/>}
+                role="button" 
+                aria-label={playTrailerLabelText}
+                className={classes.btn}
+                title={playTrailerLabelText} 
+                onClick={function () {
+                    actions.setSource({ 
+                        ...trailer, 
+                        episode: episodeNumber, 
+                        season: seasonNumber,
+                        title: trailer.title || meta.title,
+                        series: series.title
+                })}}
+            >Trailer</Button> || null }
 
-            { handlesPrefix && <button style={msgStyles} title={playLabelText} role="button" aria-label={playLabelText} style={msgStyles} onClick={function () {
-                actions.setSource({ 
-                    ...meta, 
-                    episode: episodeNumber, 
-                    season: seasonNumber,
-                    title: meta.title,
-                    series: series.title
-                })
-            }}>Watch</button> || null }
+            { handlesPrefix && <Button
+                variant="contained"
+                size="small"
+                startIcon={<IconMovie/>}
+                role="button" 
+                aria-label={playLabelText}
+                className={classes.btn}
+                title={playLabelText}
+                onClick={function () {
+                    actions.setSource({ 
+                        ...meta, 
+                        episode: episodeNumber, 
+                        season: seasonNumber,
+                        title: meta.title,
+                        series: series.title
+                    })
+                }}
+            >Watch now</Button> || null }
 
-            { !handlesPrefix && <div style={{...msgStyles, padding: '0.15em' }}>
+            { !handlesPrefix && <div className={classes.btn} style={{ padding: '0.15em' }}>
                 No stream provider for { prefix }
             </div> || null }
         </div>

@@ -2,53 +2,87 @@ import { useMemo } from 'react'
 import { createStore, applyMiddleware } from 'redux'
 import { composeWithDevTools } from 'redux-devtools-extension'
 
+import { combineReducers } from 'redux'
+
+import userSlice from './slices/userSlice'
+
+import snackSlice from './slices/snackSlice'
+
+const reducers = combineReducers({
+    session: userSlice,
+    snacks: snackSlice
+})
+
+
+
 let store
 
 export const actionTypes = {
-    LOGIN: 'login',
-    LOGOUT: 'logout',
-    LOADING: 'loading'
+    LOADING: 'LOADING',
+    LOADING_PAGE: 'LOADING_PAGE'
 }
 
-const initialState = { loading: true, user: null }
+const initialState = {}
 
-export function reducer (state, action = {}) {
-    let next = state
+// TODO FIX LOADING STATUS
+
+// export function reducer (state, action = {}) {
+//     let next = state
     
-    switch (action.type) {
-        case actionTypes.LOGIN:
-            next = { 
-                ...state, 
-                user: action.payload, 
-                userUpdatedAt: (action.payload === state.user && state.userUpdatedAt) || Date.now() 
-            }
-        break
+//     switch (action.type) {
+//         case actionTypes.LOGIN:
+//             next = { 
+//                 ...state, 
+//                 user: action.payload, 
+//                 userUpdatedAt: (action.payload === state.user && state.userUpdatedAt) || Date.now() 
+//             }
+//         break
         
-        case actionTypes.LOADING: 
-            next = { ...state, loading: false }
-        break
-    }
+//         case actionTypes.LOADING:
+//             if (action.meta && action.meta.id) {
+//                 // Insert a loading state
+//                 if (action.payload) {
+//                     next = { 
+//                         ...state,
+//                         loading: [
+//                             ...(state.loading || []), 
+//                             { ...action.meta }
+//                         ]
+//                     }
+//                 }
+
+//                 // Remove a loading state
+//                 else {
+//                     next = { 
+//                         ...state,
+//                         loading: (state.loading || []).filter(function (item) {
+//                             return item.id !== action.meta.id
+//                         })
+//                     }
+//                 }
+//             }
+//         break
+
+//         case actionTypes.LOADING_PAGE: 
+//             next = { ...state, loadingPage: action.payload || false }
+//         break
+//     }
     
-    return next
-}
+//     return next
+// }
 
 // Action creators
-export function login (user) {
-    return { type: actionTypes.LOGIN, payload: user }
+export function ACTION_LOADING (bool, meta) {
+    return { type: actionTypes.LOADING, payload: !!bool, meta }
 }
 
-export function loading (bool) {
-    return { type: actionTypes.LOADING, payload: !!bool }
-}
-
-export const actionCreators = {
-    login,
-    loading
+export function ACTION_LOADING_PAGE (bool) {
+    return { type: actionTypes.LOADING_PAGE, payload: !!bool }
 }
 
 function initStore(preloadedState = initialState) {
     return createStore(
-        reducer,
+        reducers,
         preloadedState,
         composeWithDevTools(applyMiddleware())
     )
@@ -78,13 +112,12 @@ export const initializeStore = (preloadedState) => {
     return _store
 }
 
-export function getStore () {
-    return store
-}
+// export function getStore () {
+//     return store
+// }
 
 export function useStore(initialState) {
     const store = useMemo(() => initializeStore(initialState), [initialState])
     
     return store
 }
-

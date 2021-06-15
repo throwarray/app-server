@@ -48,17 +48,18 @@ module.exports = withBundleAnalyzer(withOffline(withImages({
     return config
   },
 
-  // transformManifest: manifest => [
-  //   '/'
-  //   // '/collection',
-  //   // '/collection/[id]',
-  //   // '/title/[type]/[id]',
-  //   // '/about',
-  //   // '/privacy',
-  //   // '/settings',
-  //   // '/terms'
-  // ].concat(manifest),
-  // generateInDevMode: true,
+  transformManifest: manifest => [
+    '/', // add the homepage to the cache
+    // '/collection',
+    // '/collection/[id]',
+    // '/title/[type]/[id]',
+    // '/about',
+    // '/privacy',
+    // '/settings',
+    // '/terms'
+  ].concat(manifest),
+
+  generateInDevMode: false,
 
   async rewrites() {
     return [
@@ -70,94 +71,96 @@ module.exports = withBundleAnalyzer(withOffline(withImages({
   },
 
   workboxOpts: {
-    // clientsClaim: true,
-    // skipWaiting: true,
+    skipWaiting: true, // forces the waiting service worker to become the active service worker
+    clientsClaim: true, // for both the current client and all other active clients.
+    exclude: [
+      /user$/,
+      // Handles dev mode
+      /.*\.hot-update\.json$/,
+      /\/webpack-hmr$/,
+      /\/webpack\/.*\.hot-update\.json$/,
+      /^build-manifest\.json$/,
+      /^react-loadable-manifest\.json$/,
+      /.*\/_error\.js$/,
+      /.*\.js\.map$/,
+    ],
+
+    // FIXME Increased the default limit because dev bundles were too large
+    maximumFileSizeToCacheInBytes: 1000 * 1024 * 15,
+
     cleanupOutdatedCaches: true,
+
     swDest: process.env.NEXT_EXPORT? 'service-worker.js' : 'static/service-worker.js',
 
-    exclude: [
-      // /user/,
-      // /.*\/_next\/webpack-hmr.*/, 
-      // /.*\.hot-update\.json$/
-    ],
     runtimeCaching: [
       { // Cache the Google Fonts stylesheets with a stale-while-revalidate strategy.
-        urlPattern: /^https:\/\/fonts\.googleapis\.com/, handler: 'StaleWhileRevalidate',
-        options: {
-          cacheName: 'stylesheets'
-        }
+        urlPattern: /^https:\/\/fonts\.googleapis\.com\//, 
+        handler: 'StaleWhileRevalidate',
+        options: { cacheName: 'stylesheets' }
       },
       { // Cache the underlying font files with a cache-first strategy for 1 year.
-        urlPattern: /^https:\/\/fonts\.gstatic\.com/, handler: 'CacheFirst',
+        urlPattern: /^https:\/\/fonts\.gstatic\.com\//, 
+        handler: 'CacheFirst',
         options: {
           cacheName: 'fonts',
           cacheableResponse: { statuses: [0, 200] },
           expiration: { maxAgeSeconds: 60 * 60 * 24 * 365, maxEntries: 30 }
         }
       },
-      { // Cache meta responses
-        urlPattern: /.*\/providers\/.*\.json(?:\?.*)?$/,
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'offlineCache',
-          cacheableResponse: {
-            statuses: [0, 200]
-          },
-          expiration: {
-            maxEntries: 100,
-          }
-        }
+      { // Cache the video.js stylesheet with a stale-while-revalidate strategy.
+        urlPattern: /^https:\/\/unpkg\.com\/video\.js\/dist\/video-js\.min\.css$/, 
+        handler: 'StaleWhileRevalidate',
+        options: { cacheName: 'stylesheets' }
       },
-      { // Cache first for tmdb images
-        urlPattern: /.*image.tmdb.org\/.*\.(?:png|gif|jpg|jpeg|webp|svg|ico)$/,
+      { // Cache first for tmdb images.
+        urlPattern: /^https:\/\/image\.tmdb\.org\/.+\.(?:png|gif|jpg|jpeg|webp|svg|ico)$/,
         handler: 'CacheFirst',
         options: {
           cacheName: 'images',
-          cacheableResponse: {
-            statuses: [0, 200]
-          },
+          cacheableResponse: { statuses: [0, 200] },
           expiration: {
             maxEntries: 250,
-            maxAgeSeconds: 30 * 24 * 60 * 60
+            maxAgeSeconds: 14 * 24 * 60 * 60 // 2 weeks
           }
         }
       },
-      { // Network first for images
+      { // Cache images
         urlPattern: /.*\.(?:png|gif|jpg|jpeg|webp|svg|ico)$/,
         handler: 'NetworkFirst',
         options: {
-          networkTimeoutSeconds: 10,
+          networkTimeoutSeconds: 15,
           cacheName: 'images',
           cacheableResponse: { statuses: [0, 200] },
           expiration: { maxEntries: 250 }
         }
       },
-      { // Cache the video.js stylesheets with a stale-while-revalidate strategy.
-        urlPattern: /^https:\/\/unpkg\.com\/video.js\/dist\/video-js\.min\.css$/, handler: 'StaleWhileRevalidate',
-        options: {
-          cacheName: 'stylesheets'
-        }
+      { // Cache the tmdb collections with a stale-while-revalidate strategy.
+        urlPattern: /\/providers\/tmdb\/collection\.json$/,
+        handler: 'StaleWhileRevalidate',
+        options: { cacheName: 'offlineCache' }
       },
-      {
-        urlPattern: new RegExp(`^${APP_URL}(/.*)?$`), // new RegExp(`^${APP_URL}(/([^.])+)?($|/{1,}.*(\\.js|\\.jsx|\\.css|\\.html))$`),
+      { // Cache provider responses
+        urlPattern: /.*\/providers\/.*\.json$/,
         handler: 'NetworkFirst',
         options: {
           cacheName: 'offlineCache',
-          expiration: {
-            maxEntries: 100
-          }
+          cacheableResponse: { statuses: [0, 200] },
+          expiration: { maxEntries: 100 }
+        }
+      },
+      { // Cache all assets of host
+        urlPattern: new RegExp(`^(?:https?://)?${HOST_NAME}\b(?:/.*)?$`),
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'offlineCache',
+          cacheableResponse: { statuses: [0, 200] },
+          expiration: { 
+            maxEntries: 100,
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 1 month
+          },
+          // networkTimeoutSeconds: 15,
         }
       }
-      // {
-      //   urlPattern: /^https?.*/,
-      //   handler: 'NetworkFirst',
-      //   options: {
-      //     cacheName: 'offlineCache',
-      //     expiration: {
-      //       maxEntries: 100
-      //     }
-      //   }
-      // }
     ]
   }
 })))

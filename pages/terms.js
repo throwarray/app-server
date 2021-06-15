@@ -1,32 +1,33 @@
 import Link from 'next/link'
 import Head from 'next/head'
+import Typography from '@material-ui/core/Typography'
+import { Container } from '@material-ui/core'
 
-export default function TermsPage () {
-    return <div style={{ color: '#333', background: 'ghostwhite' }}><div style={{ margin: '0 1.5em' }}>
+function TermsPage () {
+    return <Container maxWidth={'md'} style={{ height: '100%' }}>
     <Head>
         <title key="page-title">Terms of service | App</title>
         <meta key="page-description" name="Description" content="Terms of service | App"/>
     </Head>
 
-    <h2 style={{ margin: 0 }}>TERMS OF SERVICE</h2>
+    <Typography variant="h3">Terms of Service</Typography>
+    <Typography variant="body1">Last Revised: September 28th 2019</Typography>
 
-    <h5>Last Revised: September 28th 2019</h5>
-    
     <p>
-    These Terms of service ("Terms") apply to your access and use of the service (the "Service"). Please read them carefully.
+    These Terms of service (&quot;Terms&quot;) apply to your access and use of the service (the &quot;Service&quot;). Please read them carefully.
     </p>
     <p>
     These Terms constitute the entire agreement between you and the Service regarding the use of the Service, superseding any prior agreements between you and the Service relating to your use of the Service.
     </p>
 
-    <h3>Accepting these Terms</h3>
+    <Typography variant="h4">Accepting these Terms</Typography>
     
 
     <p>If you access or use the Service, it means you agree to be bound by all of the Terms below. 
-    Before you use the Service please read all of the Terms;  If you don't agree to all of the Terms below, please do not use the Service.
+    Before you use the Service please read all of the Terms;  If you don&apos;t agree to all of the Terms below, please do not use the Service.
     </p>
 
-    <h3>Changes to these Terms</h3>
+    <Typography variant="h4">Changes to these Terms</Typography>
     <p>
     We reserve the right to modify these Terms at any time.
     Whenever we make changes to these Terms, the changes are effective after we post such revised Terms (indicated by revising the date at the top of these Terms) or upon your acceptance if we provide a mechanism for your immediate acceptance of the revised Terms (such as a click-through confirmation or acceptance button). It is your responsibility to check for changes to these Terms.
@@ -34,25 +35,25 @@ export default function TermsPage () {
     </p>
     
 
-    <h3>Privacy Policy</h3>
+    <Typography variant="h4">Privacy Policy</Typography>
 
     <p>
     For information about how we collect and use information about users of the Service,
     please check out our <Link href="/terms"><a title="Privacy Policy" aria-label="Click to view privacy policy">privacy policy.</a></Link>
     </p>
 
-    <h3>Third-Party Services</h3>
+    <Typography variant="h4">Third-Party Services</Typography>
 
     <p>
     From time to time, we may provide you with links to third party websites or services that we do not 
     own or control. Your use of the Service may also include the use of applications that are developed 
     or owned by a third party. Your use of such third party applications, websites, and services is 
-    governed by that party's own terms of service or privacy policies. We encourage you to read the 
+    governed by that party&apos;s own terms of service or privacy policies. We encourage you to read the 
     terms and conditions and privacy policy of any third party application, website or service that you 
     visit or use.
     </p>
 
-    <h3>Creating Accounts</h3>
+    <Typography variant="h4">Creating Accounts</Typography>
 
     <p>When you create an account or use another service to log in to the Service, 
     you agree to maintain the security of your password and accept all risks of unauthorized 
@@ -61,7 +62,7 @@ export default function TermsPage () {
     </p>
 
 
-    <h3>Your Content & Conduct</h3>
+    <Typography variant="h4">Your Content & Conduct</Typography>
 
     <p>
     {/* Our Service allows you and other users to post, link and otherwise make available content.  */}
@@ -118,7 +119,7 @@ export default function TermsPage () {
         features designed to protect the Service, users of the Service, or third parties.</li>
     </ul>
 
-    <h3>Materials</h3>
+    <Typography variant="h4">Materials</Typography>
 
     <p>
     We put a lot of effort into creating the Service including, the logo, designs, 
@@ -151,19 +152,19 @@ export default function TermsPage () {
         we may terminate your use of the Service.</li>
     </ol>
 
-    <h3>Hyperlinks and Third Party Content</h3>
+    <Typography variant="h4">Hyperlinks and Third Party Content</Typography>
     
     <p>You may create a hyperlink to the Service. But, you may not use, frame or utilize framing techniques to enclose any of our trademarks, 
     logos or other proprietary information without our express written consent. The Service makes no claim or representation regarding, and accepts no responsibility for third 
     party websites accessible by hyperlink from the Service or websites linking to the Service. 
     When you leave the Service, you should be aware that these Terms and our policies no longer govern.</p> 
     
-    <p>If there is any content on the Service from you and others, we don't review, 
+    <p>If there is any content on the Service from you and others, we don&apos;t review, 
     verify or authenticate it, and it may include inaccuracies or false information. We make no representations, warranties, or guarantees relating to the quality, suitability, 
     truth, accuracy or completeness of any content contained in the Service. You acknowledge sole responsibility for and assume all risk arising from your use of or 
     reliance on any content.</p>
 
-    <h3>Legal</h3>
+    <Typography variant="h4">Legal</Typography>
     <p>
         THE SERVICE AND ANY OTHER SERVICE AND CONTENT INCLUDED ON OR OTHERWISE MADE AVAILABLE TO YOU THROUGH THE SERVICE ARE PROVIDED TO YOU ON AN AS IS OR AS 
         AVAILABLE BASIS WITHOUT ANY REPRESENTATIONS OR WARRANTIES OF ANY KIND. WE DISCLAIM ANY AND ALL WARRANTIES AND REPRESENTATIONS (EXPRESS OR IMPLIED, ORAL OR WRITTEN) 
@@ -179,27 +180,29 @@ export default function TermsPage () {
     </p>
 
     <p>
-        You agree to defend, indemnify and hold us harmless from and against any and all costs, damages, liabilities, and expenses (including attorneys' fees, costs, penalties, 
+        You agree to defend, indemnify and hold us harmless from and against any and all costs, damages, liabilities, and expenses (including attorneys&apos; fees, costs, penalties, 
         interest and disbursements) we incur in relation to, arising from, or for the purpose of avoiding, any claim or demand from a third party relating to your use of the Service 
         or the use of the Service by any person using your account, including any claim that your use of the Service violates any applicable law or regulation, or the rights of any 
         third party, and/or your violation of these Terms.
     </p>
 
-    <h3>Governing Law</h3>
+    <Typography variant="h4">Governing Law</Typography>
     <p>
     {/* TODO JURISDICTION AND CONTACT */}
     The validity of these Terms and the rights, obligations, and relations of the parties under these Terms will be construed and determined under and in accordance with the laws of the [U.S. STATE NAME OR OTHER JURISDICTION], without regard to conflicts of law principles.
     </p>
 
-    <h3>Jurisdiction</h3>
+    <Typography variant="h4">Jurisdiction</Typography>
     <p>You expressly agree that exclusive jurisdiction for any dispute with the Service or relating to your use of it, resides in the courts of the [STATE NAME OR JURISDICTION] and you further agree and expressly consent to the exercise of personal jurisdiction in the courts of the [STATE NAME OR JURISDICTION] located in [CITY AND STATE IF APPLICABLE] in connection with any such dispute including any claim involving Service. You further agree that you and Service will not commence against the other a class action, class arbitration or other representative action or proceeding.</p>
 
-    <h3>Termination</h3>
+    <Typography variant="h4">Termination</Typography>
 
     <p>If you breach any of these Terms, we have the right to suspend or disable your access to or use of the Service.</p>
 
-    <h3>Questions & Contact Information</h3>
+    <Typography variant="h4">Questions & Contact Information</Typography>
     <p>Questions or comments about the Service may be directed to us at the email address [SUPPORT EMAIL ADDRESS].</p>
 
-    </div></div>
+    </Container>
 }
+
+export default TermsPage

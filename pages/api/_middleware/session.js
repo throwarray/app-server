@@ -4,7 +4,7 @@ import MongoStore from 'connect-mongo'
 
 import databaseMiddleware from './database'
 
-const usesHttps = (process.env.APP_URL || '').startsWith('https://')
+const USE_SECURE_COOKIES = (process.env.APP_URL || '').startsWith('https://')
 
 export function destroySession (req, res, next) {
     // Removes req.user, and clears the `session.passport` value from the session.
@@ -35,7 +35,7 @@ export default function sessionMiddleware (req, res, next) {
             secret: process.env.SESSION_SECRET,
             cookie: {
                 httpOnly: true,
-                secure: usesHttps,
+                secure: USE_SECURE_COOKIES,
                 sameSite: 'Lax',
                 maxAge: process.env.SESSION_COOKIE_LIFETIME || 30 * 86400000 // 30 days
             },

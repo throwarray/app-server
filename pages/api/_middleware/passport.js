@@ -1,7 +1,6 @@
 import sessionMiddleware from './session'
 import passport from 'passport'
 import Auth0Strategy from 'passport-auth0'
-import createRouter from './createRouter'
 
 function compatMiddleware (_req, res, next) {
     res.redirect = (code, path) => {
@@ -43,19 +42,22 @@ passport.use(
     })
 )
 
-const router = createRouter()
+const passportMiddleware = passport.initialize()
 
-router.use(
-    compatMiddleware, 
-    sessionMiddleware, 
-    passport.initialize(), 
-    passport.session()
-)
+const passportSessionMiddleware = passport.session()
 
-export default router
+// next-connect doesn't seem to support nested routers correctly
+// IDEA https://github.com/blakeembrey/compose-middleware
 
-// export function ensureAuth (req, res, next) {
-//     if (req.user) return next()
-//     if (req.session) req.session.returnTo = req.originalUrl
-//     res.redirect('/api/login')
-// }
+export default function router (req, res, next) {
+    compatMiddleware(req, res, function (err) {
+        if (err) next(err)
+        else sessionMiddleware(req, res, function (err) {
+            if (err) next(err)
+            else passportMiddleware(req, res, function (err) {
+                if (err) next(err)
+                else passportSessionMiddleware(req, res, next)
+            })
+        })
+    })
+}

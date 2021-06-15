@@ -1,38 +1,33 @@
-import passportMiddleware from './_middleware/passport'
-
-import createRouter from './_middleware/createRouter'
+import passportMiddleware from '../_middleware/passport'
+import createRouter from '../_middleware/createRouter'
 
 const router = createRouter()
 
-router.use(
+router.get(
     passportMiddleware,    
     function (req, res, next) {
         if (!req.isAuthenticated()) {
             res.status(401)
-            res.json({
-                message: 'Unauthorized',
-                error: true
-            })
+            res.json({ error: true })
         }
 
         else next()
     },
     async function (req, res) {
-        const { _raw, _json, user_id } = req.user
+        const { /*_raw,*/ _json, user_id } = req.user
 
         let providers; try { 
             providers = await req.db.collection('providers').find({ 
-                user: user_id 
+                user: String(user_id)
             }).toArray()
         } finally {
             res.json({
                 ..._json,
-                user_id,
-                providers: providers || []
+                user_id: String(user_id),
+                providers: providers || [],
             })
         }
     }
 )
 
-//export default (req, res) => router.apply(req, res)
 export default router

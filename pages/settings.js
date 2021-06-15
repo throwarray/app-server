@@ -1,162 +1,572 @@
-import { useRef, useState, useMemo, useCallback } from 'react'
-import { Message } from '../components/Layout'
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import Message from '../components/Layout/Message'
+
+import { useDispatch } from 'react-redux'
+import { useToken } from '../components/xsrf'
+import { useDarkMode } from '../components/Layout/mui-theme'
+import { addSnack, removeSnack } from '../components/slices/snackSlice'
 import { fetch, formBody } from '../components/fetch'
 import { trigger } from 'swr'
 import Head from 'next/head'
+import clsx from 'clsx'
 
-function refreshUserState () { trigger('/api/user') }
+import { makeStyles } from '@material-ui/core/styles'
+import Paper from '@material-ui/core/Paper'
+import TextField from '@material-ui/core/TextField'
+import Typography from '@material-ui/core/Typography'
+import Button from '@material-ui/core/Button'
+import IconButton from '@material-ui/core/IconButton'
+import DeleteIcon from '@material-ui/icons/Delete'
+import SettingsIcon from '@material-ui/icons/Settings'
+import Container from '@material-ui/core/Container'
+import Chip from '@material-ui/core/Chip'
+import Autocomplete from '@material-ui/lab/Autocomplete'
+import SaveIcon from '@material-ui/icons/Save'
+import Alert from '@material-ui/lab/Alert'
+import Select from '@material-ui/core/Select'
+import MenuItem from '@material-ui/core/MenuItem'
 
-export default function SettingsPage ({ providers, user }) {
-    const offline = typeof navigator !== 'undefined' && !navigator.onLine
+const useSettingsPageStyles = makeStyles((theme) => ({
+    sectionTitle: { marginTop: '1.5em' },
+    pageContainer: { marginBottom: '1.5em' },
+    form: {
+        '& > .MuiTextField-root': { 
+            display: 'block',
+            '& > .MuiInputBase-root': { width: '100%' }
+        }
+    },
+    input: {
+        width: '100%',
+        marginBottom: theme.spacing(2)
+    },
+    providerList: {
+        maxHeight: '300px',
+        overflow: 'auto'
+    },
+    providerListItemWrapper: {
+        marginBottom: theme.spacing(1)
+    }, 
+    providerListItem: { 
+        display: 'flex',
+        padding: '1em',
+        flexWrap: 'wrap'
+    },
+    selectedProvider: {
+        border: '3px solid ' + theme.palette.primary.main
+    }
+}))
+
+
+function updateSettings (evt, options = {}) {
+    // Prevent default form submission
+    if (evt && evt.preventDefault) evt.preventDefault()
+
+    // Grab the action and method from the form unless specified in options
+    const form = evt && evt.target
+    const action = '' + (options.action || form.getAttribute('action'))
+    const method = '' + (options.method || form.getAttribute('method'))
+
+    const values = Object.create(null)
+
+    const inputs = form? 
+        Array.prototype.slice.call(form.querySelectorAll('input')):
+        null
     
+    // Get input values
+    if (inputs) inputs.forEach(function (input) {
+        const name = input.getAttribute('name')
+        if (name) values[name] = input.value
+    })
+
+    // Add additional values (i.e inputs without 'name' attribute)
+    Object.assign(values, options.values || {})
+
+    // Submit the form to the action url
+    if (form) form.reset()
+
+    return fetch(action, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody(values),
+        method
+        // Trigger a refresh of user session
+    }).then(
+        function (response) {
+            trigger('/api/user')
+
+            return response.json()
+        },
+        function (err) {
+            trigger('/api/user')
+
+            return { error: err || new Error('error') }
+        }
+    )
+}
+
+
+
+
+export default function SettingsPage (props) {
+    const offline = typeof navigator !== 'undefined' && !navigator.onLine
+    const { user } = props
+
     return <>
         <Head>
             <title key="page-title">Settings | App</title>
             <meta key="page-description" name="Description" content="Settings | App"/>
         </Head>
-        {
-            !user? <Message><div>Please login to add providers.</div></Message>:
-            offline? <div>An internet connection is required to update settings.</div> :
-            <Page providers={providers}></Page>
-        }
+    {
+        !user? <Message>
+            <Alert severity="warning">Please login to add providers.</Alert>
+        </Message>:
+        offline? <Message>
+            <Alert severity="warning">An internet connection is required to update settings.</Alert>
+        </Message>:
+        <Page {...props}/>
+    }
     </>
 }
 
-function Page ({ providers }) {
-    const [state, setState] = useState({})
-    
+
+const DEFAULT_MODIFY_FORM_STATE = {
+    id: '',
+    url: '',
+    title: '',
+    streams: '',
+    meta: '',
+    collections: '',
+    _csrf: ''
+}
+
+function Page ({ providers: unsorted_providers }) {
+    const dispatch = useDispatch()
+    const [selected_provider, setSelectedProvider] = useState()
+    const [dark_mode, setDarkMode] = useDarkMode()
+
+    const token = useToken()
+
     const formRef = useRef()
         
-    const id_pattern = '^\\w+\\b$'
-    const ids_pattern = '^(?:(?:\\w+(?:,\\w+)?)+|\\*)$'
-    const submitForm = useCallback(function (evt) {
-        evt.preventDefault()
+    const classes = useSettingsPageStyles()
 
-        const form = evt.target
-        const action = form.getAttribute('action')
-        const inputs = Array.prototype.slice.call(form.querySelectorAll('input'))
-        const form_map = Object.create(null)
-        
-        inputs.forEach(function (input) {
-            const name = input.getAttribute('name')
-            
-            form_map[name] = input.value
+    const submitDeleteProviderForm = useCallback(updateSettings, [])
+
+    // Keep state for the controlled components of form (Add / Modify provider)
+    const [formData, setFormData] = useState(DEFAULT_MODIFY_FORM_STATE)
+
+    const setInput = useCallback(function (name, value) {
+        setFormData(function (state) {
+            const modified_state = { ...state }
+
+            if (hasOwnProperty.call(state, name)) modified_state[name] = value
+
+            return modified_state
         })
+    }, [setFormData])
 
-        form.reset()
- 
-        if (action) fetch(action, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: formBody(form_map),
-            method: 'POST'
-        }).then(refreshUserState, refreshUserState)
-    }, [])
+    const onInputChange = useCallback(function (evt) {
+        const element = evt.target
+        const name = element.getAttribute('name')
+        const value = element.value
+        setInput(name, value)
+    }, [setInput])
 
-    const formDefaults = useMemo(function () {
-        if (providers && state.modify) {
-            const provider = providers.find(provider=> { 
-                return provider.id === state.modify 
-            })
-    
-            if (provider) {
-                const { streams, meta, collections } = provider
-    
-                return {
-                    id: provider.id,
-                    title: provider.title,
-                    url: provider.url,
-                    streams: streams.join(','),
-                    meta: meta.join(','),
-                    collections: collections.join(',')
-                }
+    const submitProviderForm = useCallback(function (evt) {
+        dispatch(addSnack({
+            id: 'SAVING_PROVIDER',
+            severity: 'info', 
+            value: 'Saving changes' 
+        }))
+
+        updateSettings(evt, { values: formData }).then(
+            function (response) {
+                dispatch(removeSnack('SAVING_PROVIDER'))
+
+                document.querySelector('#back-to-top-anchor').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                })
+
+                if (response.error)
+                    dispatch(addSnack({ severity: 'error', value: 'Failed to save changes' }))
+                else
+                    dispatch(addSnack({ value: 'Saved changes successfully'}))
             }
-        }
+        )
 
-        return {}
-    }, [providers, state.modify])
+        setSelectedProvider(undefined)
+        
+        setFormData(DEFAULT_MODIFY_FORM_STATE)
+    }, [formData, dispatch])
 
-    return <div>
-    <style>{`
-        .providers {
-            background: #444;
-            min-height: 100px;
-            margin: 1em;
-        }
-        .providers .material-icons {
-            margin: 0.25em;
-        }
-    `}</style>
+    // Incase not already
+    const providers = useMemo(function () {
+        if (unsorted_providers) return [...unsorted_providers].sort((a, b)=> a.id > b.id ? 1 : -1)
+        else return unsorted_providers
+    }, [unsorted_providers])
 
-    <div className="providers">
-        <h3>Providers</h3>
-        <div>{
+    return <Container maxWidth="md" className={classes.pageContainer}>
+
+
+
+
+    <div>
+        <Typography className={classes.sectionTitle} variant="h4" gutterBottom>Providers</Typography>
+        <div className={classes.providerList}>{
             providers? providers.map(provider => {
-                const selected = provider.id === state.modify
+                return <Paper className={classes.providerListItemWrapper} key={provider.id}>
+                    <div className={clsx(classes.providerListItem, { [classes.selectedProvider]: provider.id === selected_provider })}>
+                        <Typography style={{ alignSelf: 'center' }}>{provider.id}</Typography>
 
-                return <div key={provider.id}>
-                    <div style={{ 
-                        display: 'flex', 
-                        padding: '1em', 
-                        margin: '0.25em',
-                        background: '#eee',
-                        color: '#333',
-                        flexWrap: 'wrap',
-                        border: selected? '3px solid green' : 'none'
-                    }}>
-                        <div>{provider.id}</div>
-                        <div style={{ flex: 1 }}></div>
-                        
-                        <li className="material-icons" onClick={()=> {                           
-                            setState(state => { return { ...state, modify: provider.id } })
+                        <div style={{ flex: 1 }}/>
 
-                            formRef.current.scrollIntoView()
-                        }}>settings</li>
+                        <IconButton title="Edit provider" onClick={()=> {
+                            const target = provider.id
 
-                        <form method="POST" action="/api/providers/system/removeProvider" onSubmit={submitForm}>
-                            <input type="text" name="id" style={{ display: 'none' }} defaultValue={provider.id}></input>
-                            <button>
-                                <li className="material-icons">delete</li>
-                            </button>
+                            const found = providers.find(provider=> { 
+                                return provider.id === target 
+                            })
+
+                            if (found) {
+                                const { streams, meta, collections } = found
+                                
+                                setSelectedProvider(found.id)
+
+                                setFormData({
+                                    id: String(found.id),
+                                    title: String(found.title),
+                                    url: String(found.url),
+                                    streams: streams.join(','),
+                                    meta: meta.join(','),
+                                    collections: collections.join(',')
+                                })
+
+                                formRef.current.scrollIntoView()
+                            }
+                        }}>
+                            <SettingsIcon/>
+                        </IconButton>
+
+                        <form method="DELETE" action="/api/user/provider" onSubmit={submitDeleteProviderForm}>
+                            <input name="_csrf" type="hidden" defaultValue={token}/>
+                            <input type="text" title="id" name="id" style={{ display: 'none' }} defaultValue={provider.id} hidden={true}/>
+                            <IconButton type="submit" title="Delete provider" component="button">
+                                <DeleteIcon/>
+                            </IconButton>
                         </form>
                     </div>
-                </div>
+                </Paper>
             }) : null
         }
         </div>
     </div>
 
-    <form className="add_provider" ref={formRef} method="POST" action="/api/providers/system/addProvider" onSubmit={submitForm}>
-        <style>{`
-            .add_provider { margin: 1em; }
-            .add_provider label { display: block; }
-            .add_provider input { margin: 0.5em; }
-        `}</style>
+    <EditProviderForm
+        modifyingProvider={selected_provider}
+        providers={providers}
+        setInput={setInput}
+        token={token}
+        formRef={formRef} 
+        formData={formData} 
+        onSubmit={submitProviderForm}
+        component="button"
+        onInputChange={onInputChange}
+    />
 
-        <h3>Add / Edit provider</h3>
+    {/* TODO Doesn't require login */}
+    <div>
+        <Typography className={classes.sectionTitle} variant="h4" gutterBottom>Dark theme</Typography>
+        <Select
+          variant="filled"
+          labelId="theme-select-label"
+          id="theme-select"
+          value={dark_mode}
+          className={classes.input}
+          onChange={(evt)=> {
+            const dark_mode = evt.target.value 
 
-        <label htmlFor="id">Provider ID*</label>
-        <input maxLength="16" required={true} pattern={id_pattern} type="id" name="id" defaultValue={formDefaults.id}></input>
-
-        <label htmlFor="url">URL**</label>
-        <input maxLength="500" required={true} type="text" pattern="^.+" name="url" defaultValue={formDefaults.url}></input>
-
-        <label htmlFor="title">Title</label>
-        <input name="title" maxLength="50" defaultValue={formDefaults.title}></input>
-
-        <label htmlFor="streams">Streams***</label>
-        <input maxLength="400" name="streams" pattern={ids_pattern} defaultValue={formDefaults.streams}></input>
-        
-        <label htmlFor="meta">Meta***</label>
-        <input maxLength="400" name="meta" pattern={ids_pattern} defaultValue={formDefaults.meta}></input>
-
-        <label htmlFor="collections">Collections***</label>
-        <input maxLength="400" name="collections" pattern={ids_pattern} defaultValue={formDefaults.collections}></input>
-
-        <p>* Unique id. When id is already in use the existing provider will be modified.</p>
-        <p>** Provider endpoint url with public /streams|collection|meta routes</p>
-        <p>*** Optional comma seperated list of provider ids. I.e tmdb,my_provider</p>
-        <button>Submit</button>
-    </form>
+            setDarkMode(dark_mode)
+          }}
+        >
+          <MenuItem value={'light'}>Off</MenuItem>
+          <MenuItem value={'dark'}>On</MenuItem>
+          <MenuItem value={'auto'}>Auto</MenuItem>
+        </Select>
     </div>
+
+
+    </Container>
 }
 
+const hasOwnProperty = Object.prototype.hasOwnProperty
+
+
+
+const REGEXP_ID_VALIDATION = new RegExp('(?:^\\w{1,16}$)|(?:^\\*$)')
+
+
+function EditProviderForm ({ modifyingProvider, providers, setInput, token, formData, formRef, onInputChange, onSubmit }) {
+    const classes = useSettingsPageStyles()
+    const provider_id = formData.id
+    const id_pattern = '^\\w{1,16}$'
+
+    // When editing a provider populate default form values
+    const defaults = useMemo(function () {
+        const defaults = { streams: [], meta: [], collections: [] }
+
+        const provider = providers && providers.find(({ id })=> id === modifyingProvider)
+
+        if (!provider) return defaults
+        if (provider.streams) defaults.streams = provider.streams.map((id)=> ({ id }))
+        if (provider.meta) defaults.meta = provider.meta.map((id)=> ({ id }))
+        if (provider.collections) defaults.collections = provider.collections.map((id)=> ({ id }))
+
+        return defaults
+    }, [providers, modifyingProvider])
+
+    // Add wildcard and new provider id as recommendation
+    const id_options = useMemo(function () {
+        const options = [...providers].sort(function (a, b) { return a.id > b.id ? 1 : -1 })
+
+        // if valid and not a duplicate entry
+        if (REGEXP_ID_VALIDATION.test(provider_id) && !options.find(({ id })=> id === provider_id)) 
+            options.push({ id: provider_id })
+
+        if (provider_id !== '*') options.push({ id: '*' })
+        
+        return options
+    }, [provider_id, providers])
+
+    return <form className={classes.form} ref={formRef} method="POST" action="/api/user/provider" onSubmit={onSubmit} autoComplete="off" spellCheck="false">
+        <input name="_csrf" type="hidden" defaultValue={token}/>
+        <Typography className={classes.sectionTitle} variant="h4" gutterBottom>Add / Edit provider</Typography>
+        <TextField
+            placeholder="Example Provider" 
+            helperText="A name used to refer to this provider." 
+            variant="filled" 
+            className={classes.input} 
+            title="Title"
+            label="Title"
+            name="title"
+            InputProps={{ disableUnderline: true }}
+            inputProps={{ maxLength: 50, pattern: '^.+' }}
+            value={formData.title} 
+            onChange={onInputChange}
+        />
+        <TextField 
+            placeholder="example" 
+            helperText="A unique identifier. If the identifier  already added the existing provider will be modified." 
+            variant="filled" 
+            className={classes.input} 
+            title="Provider ID" 
+            label="Provider ID" 
+            name="id" 
+            required={true}
+            InputProps={{ disableUnderline: true }}
+            inputProps={{ maxLength: 16, pattern: id_pattern }}
+            value={formData.id} 
+            onChange={onInputChange}
+        />
+        <TextField 
+            placeholder="/api/providers/example" 
+            helperText="The base URL with /streams /collection and /meta routes." 
+            variant="filled" 
+            className={classes.input} 
+            title="URL" 
+            label="URL" 
+            name="url"
+            required={true}
+            InputProps={{ disableUnderline: true }}
+            inputProps={{ maxLength: 500, pattern: '^.+' }}
+            value={formData.url} 
+            onChange={onInputChange}
+        />
+        <AutoCompletedInput
+            className={classes.input}
+            defaultValue={defaults.streams}
+            name="streams"
+            setInput={setInput}
+            options={id_options}
+            renderInput={(params) => (
+                <TextField {...{
+                    variant: 'filled',
+                    placeholder: 'example,*',
+                    helperText: 'An optional comma seperated list of provider ids to provide streams for.', 
+                    title: 'Streams',
+                    label: 'Streams',
+                    name: 'streams',
+                    ...params
+                }}/>
+            )}
+        />
+        <AutoCompletedInput
+            className={classes.input}
+            defaultValue={defaults.meta}
+            name="meta"
+            setInput={setInput}
+            options={id_options}
+            renderInput={(params) => (
+                <TextField {...{
+                    variant: 'filled',
+                    placeholder: 'example,*',
+                    helperText: 'An optional comma seperated list of provider ids to provide meta for.', 
+                    title: 'Meta',
+                    label: 'Meta',
+                    name: 'meta',
+                    ...params
+                }}/>
+            )}
+        />
+        <AutoCompletedInput
+            className={classes.input}
+            defaultValue={defaults.collections}
+            name="collections"
+            setInput={setInput}
+            options={id_options}
+            renderInput={(params) => (
+                <TextField {...{
+                    variant: 'filled',
+                    placeholder: 'example,*',
+                    helperText: 'An optional comma seperated list of provider ids to provide collections for.', 
+                    title: 'Collections',
+                    label: 'Collections',
+                    name: 'collections',
+                    ...params
+                }}/>
+            )}
+        />
+        <Button
+            title="Save"
+            type="submit"
+            variant="contained"
+            // color="primary"
+            size="large"
+            className={clsx(classes.input, classes.button)}
+            startIcon={<SaveIcon />}
+        >Save</Button>
+    </form>
+}
+
+
+/*
+IDEA Provide error feedback for the user input
+IDEA Enforce maxLength (i.e approx 30 chips at length 16 with , as a seperator)
+IDEA Support noscripters (render fallback TextFields until mounted)
+// const ids_pattern = '^(?:(?:\\w+(?:,\\w+)?)+|\\*)$'
+// inputProps:{ ...params.inputProps, 
+//     maxLength: 400, 
+//     pattern: ids_pattern 
+// }
+*/
+
+function AutoCompletedInput ({
+    defaultValue,
+    name,
+    setInput,
+    ...autoCompleteProps
+}) {
+    const [chips, setChips] = useState([])
+    const [inputValue, setInputValue] = useState('')
+
+    // Reset form state
+    useEffect(function () {
+        if (defaultValue) {     
+            setChips(defaultValue)
+            setInputValue('')
+        }
+    }, [defaultValue])
+
+    useEffect(function () {
+        if (setInput) setInput(name, chips.map((item)=> item.id).join(','))
+    }, [chips, name, setInput])
+
+    // Insert user choices
+    const pushChip = useCallback(function (item) {
+        let id = (item && item.id || '').toLowerCase()
+
+        const matched = id.match(/\*|\w+/)
+
+        if (!id || !matched) return
+
+        id = matched[0]
+
+        if (REGEXP_ID_VALIDATION.test(id)) {
+            setChips((previous)=> {
+                // Toggle as per default behavior
+                const prev_len = previous.length
+
+                // Prevent duplicate entries
+                let wild = previous.find((item)=> item.id === '*')
+                let state = previous.filter((item)=> item.id !== id)
+                
+                // Push chip
+                if (state.length === prev_len) {
+                    // Asterix not valid with other values
+                    if (wild) return [wild]
+                    if (id === '*') state = []
+
+                    state.push({ ...item, id })
+                }
+
+                return state
+            })
+
+            setInputValue('')
+        }
+    }, [])
+
+    return <Autocomplete
+        size="small"
+        value={chips||[]}
+        onChange={(_event, newValue, _reason) => {
+            if (_reason === 'select-option') {
+                pushChip(newValue[newValue.length - 1])
+                return 
+            }
+
+            // Insert chip on enter pressed
+            else if (_reason === 'create-option') {
+                pushChip({ id: newValue[newValue.length - 1] }) // string
+                return
+            }
+
+            setChips(()=> newValue)
+        }}
+
+        // The form input is a controlled component
+        inputValue={inputValue}
+
+        // Insert chip on blur event
+        onBlur={(evt)=> { pushChip({ id: evt.target.value }) }}
+
+        onInputChange={(_event, newInputValue, _reason) => {
+            // Insert chip on seperator
+            if (newInputValue.endsWith(',') || newInputValue.endsWith(' ')) 
+                pushChip({ id: newInputValue })
+
+            // Update controlled input component
+            else if (!newInputValue || newInputValue.match(REGEXP_ID_VALIDATION))
+            {
+                setInputValue(newInputValue)
+            }
+        }}
+
+        multiple
+        limitTags={5}
+        getOptionLabel={(option) => option.id}
+        freeSolo
+        fullWidth
+        renderTags={(chips, getTagProps) => {
+            return chips.map(({ id }, index) => (
+                <Chip
+                    key={id}
+                    variant="outlined" 
+                    label={id} 
+                    {...getTagProps({ index })} 
+                />
+            ))
+        }}
+        {...autoCompleteProps}
+    />
+
+}
