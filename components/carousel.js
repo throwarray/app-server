@@ -149,7 +149,6 @@ export function Item ({ width, height, item, /*dest = '/title'*/ }) {
             text-overflow: ellipsis;
             white-space: nowrap;
             color: #333;
-
         }
 
         .item-title h3 { margin-top: 0; margin-bottom: 0; }
@@ -201,7 +200,12 @@ export function Item ({ width, height, item, /*dest = '/title'*/ }) {
                 </Paper>
                 <div className="item-title">
                     <ItemLink item={item}>
-                        <a tabIndex={-1} role="link" aria-label={item.title || item.id } title={item.title || item.id}><h3>{ item.title }</h3></a>
+                        <a style={{ color: 'inherit' }} tabIndex={-1} role="link" aria-label={item.title || item.id } title={item.title || item.id}>
+                            <Typography style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis'
+                            }}>{ item.title }</Typography>
+                        </a>
                     </ItemLink>
                 </div>
             </div> || null }
@@ -404,7 +408,7 @@ export function Collection  (props) {
 
     return <div>
             <CollectionLink item={route}>
-                <a role="link" aria-label={title || id}>
+                <a role="link" aria-label={title || id} style={{ color: 'inherit' }}>
                 <Typography variant="h6" style={{ margin: '0.5em', padding: 0 }}>
                     { title || id }
                 </Typography>

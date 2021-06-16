@@ -1,7 +1,5 @@
 import Paper from '@material-ui/core/Paper'
 import Link from './Link'
-import Alert from '@material-ui/lab/Alert'
-
 import { makeStyles } from '@material-ui/core/styles'
 
 const useCookiePolicyStyles = makeStyles({

@@ -43,7 +43,7 @@ export default function ConsecutiveSnackbars() {
     onClose={handleClose}
     onExited={handleExited}
   >
-    <Alert onClose={handleClose} severity={ snack && snack.severity || "success" } key={snack ? snack.id : undefined}>
+    <Alert onClose={handleClose} severity={ snack && snack.severity || 'success' } key={snack ? snack.id : undefined}>
       { '' + (snack && snack.value || '') }
     </Alert>
   </Snackbar>

@@ -12,7 +12,6 @@ import InfoIcon from '@material-ui/icons/Info'
 import LogoutIcon from '@material-ui/icons/ExitToApp'
 import LoginIcon from '@material-ui/icons/VpnKey'
 import SettingsIcon from '@material-ui/icons/Settings'
-import clsx from 'clsx'
 import Link from './Link'
 import Toolbar from '@material-ui/core/Toolbar'
 import { makeStyles } from '@material-ui/core/styles'
@@ -50,7 +49,7 @@ export default function AppAside ({ router, user, token, drawerWidth = 180, them
             <Typography className={classes.brandTitle} variant="h6">App</Typography>
           </Toolbar>
           <Divider />
-          <List component={"div"} className={classes.drawerList}>
+          <List component={'div'} className={classes.drawerList}>
             <ListItem title="Home" button href="/" component={Link} className={classes.drawerListItem}>
                 <ListItemIcon><HomeIcon /></ListItemIcon>
                 <ListItemText primary={'Home'}/>

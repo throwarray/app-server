@@ -13,7 +13,7 @@ Login and add the provider by visiting the settings page.
 
 ```
 provider id: example
-url: api/providers/example
+url: /api/providers/example
 title: Example
 streams: example
 meta: example

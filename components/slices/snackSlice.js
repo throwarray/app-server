@@ -1,6 +1,6 @@
-import { createSlice } from "@reduxjs/toolkit"
+import { createSlice } from '@reduxjs/toolkit'
 
-import { v4 } from "uuid"
+import { v4 } from 'uuid'
 
 export const initialState = {
     items: [] 

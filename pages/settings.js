@@ -1,6 +1,5 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import Message from '../components/Layout/Message'
-
 import { useDispatch } from 'react-redux'
 import { useToken } from '../components/xsrf'
 import { useDarkMode } from '../components/Layout/mui-theme'
@@ -9,13 +8,13 @@ import { fetch, formBody } from '../components/fetch'
 import { trigger } from 'swr'
 import Head from 'next/head'
 import clsx from 'clsx'
-
 import { makeStyles } from '@material-ui/core/styles'
 import Paper from '@material-ui/core/Paper'
 import TextField from '@material-ui/core/TextField'
 import Typography from '@material-ui/core/Typography'
 import Button from '@material-ui/core/Button'
 import IconButton from '@material-ui/core/IconButton'
+import ClearIcon from '@material-ui/icons/Clear'
 import DeleteIcon from '@material-ui/icons/Delete'
 import SettingsIcon from '@material-ui/icons/Settings'
 import Container from '@material-ui/core/Container'
@@ -40,8 +39,10 @@ const useSettingsPageStyles = makeStyles((theme) => ({
         marginBottom: theme.spacing(2)
     },
     providerList: {
+        minHeight: '100px',
         maxHeight: '300px',
-        overflow: 'auto'
+        overflow: 'auto',
+        padding: '1em'
     },
     providerListItemWrapper: {
         marginBottom: theme.spacing(1)
@@ -49,13 +50,18 @@ const useSettingsPageStyles = makeStyles((theme) => ({
     providerListItem: { 
         display: 'flex',
         padding: '1em',
-        flexWrap: 'wrap'
+        flexWrap: 'wrap',
+        alignItems: 'center'
+    },
+    textOverflowEllipsis: {
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis',
+        overflow: 'hidden'
     },
     selectedProvider: {
         border: '3px solid ' + theme.palette.primary.main
-    }
+    },
 }))
-
 
 function updateSettings (evt, options = {}) {
     // Prevent default form submission
@@ -102,9 +108,6 @@ function updateSettings (evt, options = {}) {
         }
     )
 }
-
-
-
 
 export default function SettingsPage (props) {
     const offline = typeof navigator !== 'undefined' && !navigator.onLine
@@ -154,7 +157,7 @@ function Page ({ providers: unsorted_providers }) {
     // Keep state for the controlled components of form (Add / Modify provider)
     const [formData, setFormData] = useState(DEFAULT_MODIFY_FORM_STATE)
 
-    const setInput = useCallback(function (name, value) {
+    const setProviderFormInput = useCallback(function (name, value) {
         setFormData(function (state) {
             const modified_state = { ...state }
 
@@ -162,14 +165,19 @@ function Page ({ providers: unsorted_providers }) {
 
             return modified_state
         })
-    }, [setFormData])
+    }, [])
 
-    const onInputChange = useCallback(function (evt) {
+    const onProviderFormInputChanged = useCallback(function (evt) {
         const element = evt.target
         const name = element.getAttribute('name')
         const value = element.value
-        setInput(name, value)
-    }, [setInput])
+        setProviderFormInput(name, value)
+    }, [setProviderFormInput])
+
+    const clearProviderForm = useCallback(function (/*evt*/) {
+        setSelectedProvider(undefined)
+        setFormData(DEFAULT_MODIFY_FORM_STATE)
+    }, [])
 
     const submitProviderForm = useCallback(function (evt) {
         dispatch(addSnack({
@@ -194,83 +202,85 @@ function Page ({ providers: unsorted_providers }) {
             }
         )
 
-        setSelectedProvider(undefined)
-        
-        setFormData(DEFAULT_MODIFY_FORM_STATE)
-    }, [formData, dispatch])
+        clearProviderForm()
+    }, [formData, dispatch, clearProviderForm])
 
-    // Incase not already
+    // Sort providers
     const providers = useMemo(function () {
         if (unsorted_providers) return [...unsorted_providers].sort((a, b)=> a.id > b.id ? 1 : -1)
         else return unsorted_providers
     }, [unsorted_providers])
 
     return <Container maxWidth="md" className={classes.pageContainer}>
-
-
-
-
     <div>
         <Typography className={classes.sectionTitle} variant="h4" gutterBottom>Providers</Typography>
-        <div className={classes.providerList}>{
+        <Paper className={classes.providerList} elevation={0} square={true}>{
             providers? providers.map(provider => {
-                return <Paper className={classes.providerListItemWrapper} key={provider.id}>
+                if (provider.system) return null // do not list built-in providers
+
+                return <Paper className={classes.providerListItemWrapper} key={provider.id} elevation={2}>
                     <div className={clsx(classes.providerListItem, { [classes.selectedProvider]: provider.id === selected_provider })}>
-                        <Typography style={{ alignSelf: 'center' }}>{provider.id}</Typography>
+                        <div style={{ overflow: 'hidden' }}>
+                            <Typography variant={'body1'} className={classes.textOverflowEllipsis}>{provider.title}</Typography>
+                            <Typography variant={'subtitle1'} className={classes.textOverflowEllipsis}>{provider.id}</Typography>
+                        </div>
 
                         <div style={{ flex: 1 }}/>
+                        <div style={{ display: 'flex', flex: 1, justifyContent: 'flex-end' }}>
+                            <div>
+                                <IconButton size="small" title="Edit provider" onClick={()=> {
+                                    const target = provider.id
 
-                        <IconButton title="Edit provider" onClick={()=> {
-                            const target = provider.id
+                                    const found = providers.find(provider=> { 
+                                        return provider.id === target 
+                                    })
 
-                            const found = providers.find(provider=> { 
-                                return provider.id === target 
-                            })
+                                    if (found) {
+                                        const { streams, meta, collections } = found
+                                        
+                                        setSelectedProvider(found.id)
 
-                            if (found) {
-                                const { streams, meta, collections } = found
-                                
-                                setSelectedProvider(found.id)
+                                        setFormData({
+                                            id: String(found.id),
+                                            title: String(found.title),
+                                            url: String(found.url),
+                                            streams: streams.join(','),
+                                            meta: meta.join(','),
+                                            collections: collections.join(',')
+                                        })
 
-                                setFormData({
-                                    id: String(found.id),
-                                    title: String(found.title),
-                                    url: String(found.url),
-                                    streams: streams.join(','),
-                                    meta: meta.join(','),
-                                    collections: collections.join(',')
-                                })
-
-                                formRef.current.scrollIntoView()
-                            }
-                        }}>
-                            <SettingsIcon/>
-                        </IconButton>
-
-                        <form method="DELETE" action="/api/user/provider" onSubmit={submitDeleteProviderForm}>
-                            <input name="_csrf" type="hidden" defaultValue={token}/>
-                            <input type="text" title="id" name="id" style={{ display: 'none' }} defaultValue={provider.id} hidden={true}/>
-                            <IconButton type="submit" title="Delete provider" component="button">
-                                <DeleteIcon/>
-                            </IconButton>
-                        </form>
+                                        formRef.current.scrollIntoView()
+                                    }
+                                }}>
+                                    <SettingsIcon/>
+                                </IconButton>
+                            </div>
+                            <form method="DELETE" action="/api/user/provider" onSubmit={submitDeleteProviderForm}>
+                                <input name="_csrf" type="hidden" defaultValue={token}/>
+                                <input type="text" title="id" name="id" style={{ display: 'none' }} defaultValue={provider.id} hidden={true}/>
+                                <IconButton size="small" type="submit" title="Delete provider" component="button">
+                                    <DeleteIcon/>
+                                </IconButton>
+                            </form>
+                        </div>
                     </div>
                 </Paper>
             }) : null
         }
-        </div>
+        </Paper>
     </div>
 
     <EditProviderForm
         modifyingProvider={selected_provider}
         providers={providers}
-        setInput={setInput}
+        setInput={setProviderFormInput}
         token={token}
         formRef={formRef} 
-        formData={formData} 
+        formData={formData}
+        clearForm={clearProviderForm} 
         onSubmit={submitProviderForm}
         component="button"
-        onInputChange={onInputChange}
+        onInputChange={onProviderFormInputChanged}
     />
 
     {/* TODO Doesn't require login */}
@@ -282,11 +292,7 @@ function Page ({ providers: unsorted_providers }) {
           id="theme-select"
           value={dark_mode}
           className={classes.input}
-          onChange={(evt)=> {
-            const dark_mode = evt.target.value 
-
-            setDarkMode(dark_mode)
-          }}
+          onChange={(evt)=> setDarkMode(evt.target.value)}
         >
           <MenuItem value={'light'}>Off</MenuItem>
           <MenuItem value={'dark'}>On</MenuItem>
@@ -305,7 +311,7 @@ const hasOwnProperty = Object.prototype.hasOwnProperty
 const REGEXP_ID_VALIDATION = new RegExp('(?:^\\w{1,16}$)|(?:^\\*$)')
 
 
-function EditProviderForm ({ modifyingProvider, providers, setInput, token, formData, formRef, onInputChange, onSubmit }) {
+function EditProviderForm ({ clearForm, modifyingProvider, providers, setInput, token, formData, formRef, onInputChange, onSubmit }) {
     const classes = useSettingsPageStyles()
     const provider_id = formData.id
     const id_pattern = '^\\w{1,16}$'
@@ -355,7 +361,7 @@ function EditProviderForm ({ modifyingProvider, providers, setInput, token, form
         />
         <TextField 
             placeholder="example" 
-            helperText="A unique identifier. If the identifier  already added the existing provider will be modified." 
+            helperText="A unique identifier. If the identifier is in use the existing provider will be modified." 
             variant="filled" 
             className={classes.input} 
             title="Provider ID" 
@@ -369,7 +375,7 @@ function EditProviderForm ({ modifyingProvider, providers, setInput, token, form
         />
         <TextField 
             placeholder="/api/providers/example" 
-            helperText="The base URL with /streams /collection and /meta routes." 
+            helperText="The base URL with /streams, /collection and /meta routes." 
             variant="filled" 
             className={classes.input} 
             title="URL" 
@@ -391,7 +397,7 @@ function EditProviderForm ({ modifyingProvider, providers, setInput, token, form
                 <TextField {...{
                     variant: 'filled',
                     placeholder: 'example,*',
-                    helperText: 'An optional comma seperated list of provider ids to provide streams for.', 
+                    helperText: 'An optional comma seperated list of provider ids to serve streams for. Use * to match all providers.', 
                     title: 'Streams',
                     label: 'Streams',
                     name: 'streams',
@@ -409,7 +415,7 @@ function EditProviderForm ({ modifyingProvider, providers, setInput, token, form
                 <TextField {...{
                     variant: 'filled',
                     placeholder: 'example,*',
-                    helperText: 'An optional comma seperated list of provider ids to provide meta for.', 
+                    helperText: 'An optional comma seperated list of provider ids to serve meta for. Use * to match all providers.', 
                     title: 'Meta',
                     label: 'Meta',
                     name: 'meta',
@@ -427,7 +433,7 @@ function EditProviderForm ({ modifyingProvider, providers, setInput, token, form
                 <TextField {...{
                     variant: 'filled',
                     placeholder: 'example,*',
-                    helperText: 'An optional comma seperated list of provider ids to provide collections for.', 
+                    helperText: 'An optional comma seperated list of provider ids to serve collections for. Use * to match all providers.', 
                     title: 'Collections',
                     label: 'Collections',
                     name: 'collections',
@@ -436,10 +442,18 @@ function EditProviderForm ({ modifyingProvider, providers, setInput, token, form
             )}
         />
         <Button
+            title="Clear"
+            onClick={clearForm}
+            variant="contained"
+            size="large"
+            className={clsx(classes.input, classes.button)}
+            startIcon={<ClearIcon />}
+        >Clear</Button>
+        <Button
             title="Save"
             type="submit"
             variant="contained"
-            // color="primary"
+            color="primary"
             size="large"
             className={clsx(classes.input, classes.button)}
             startIcon={<SaveIcon />}

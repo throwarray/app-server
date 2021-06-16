@@ -10,6 +10,11 @@ const APP_URL = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, 
 const HOST_NAME = new URL(APP_URL).host
 
 module.exports = withBundleAnalyzer(withOffline(withImages({
+  webpack5: false,
+  // experimental: {
+  //   enableStaticImages: true,
+  //   enableBlurryPlaceholder: true,
+  // },
   poweredByHeader: false,
   target: 'serverless',
   env: {

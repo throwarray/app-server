@@ -1,23 +1,25 @@
-import React, { useEffect } from 'react'
-import Router, { withRouter } from 'next/router'
-import { batch, connect } from 'react-redux'
+import React, { useEffect, useMemo } from 'react'
+import { withRouter } from 'next/router'
+import { connect } from 'react-redux'
 import Head from 'next/head'
 import useSWR from 'swr'
 import { useToken } from '../xsrf.js'
-import CssBaseline from '@material-ui/core/CssBaseline'
+
 import CircularProgress from '@material-ui/core/CircularProgress'
+import Backdrop from '@material-ui/core/Backdrop'
 import Fab from '@material-ui/core/Fab'
 import KeyboardArrowUpIcon from '@material-ui/icons/KeyboardArrowUp'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
-import ConsecutiveSnackbars from './Snackbar.js'
-import { login, logout } from '../slices/userSlice.js'
+import LinearProgress from '@material-ui/core/LinearProgress'
 
+import { login, logout, setLoading } from '../slices/userSlice.js'
+import usePageLoading from './usePageLoading.js'
+import ConsecutiveSnackbars from './Snackbar.js'
 import CookiePolicy from './CookiePolicy'
 import AsideLeft from './AsideLeft'
-import ScrollTop from './ScrollTop'
+import ScrollTop, { useScrollReset } from './ScrollTop'
 import Footer from './Footer'
 import Header from './Header'
-import { ACTION_LOADING, ACTION_LOADING_PAGE } from '../store.js'
 import { fetch } from '../fetch'
 
 const useLayoutStyles = makeStyles((theme) => ({
@@ -34,30 +36,35 @@ const useLayoutStyles = makeStyles((theme) => ({
     content: {
         flex: 1,
     },
+    backdrop: {
+        zIndex: theme.zIndex.drawer + 1
+    }
 }))
 
-
-const defaultProviders = [
+const DEFAULT_PROVIDERS = [
     // {
     //     id: 'example',
     //     collections: ['example'],
     //     meta: ['example'],
     //     streams: ['example'],
-    //     title: 'Example Provider',
-    //     url: 'http://localhost:3000/api/providers/example'
+    //     title: 'Built-in Example Provider',
+    //     url: 'http://localhost:3000/api/providers/example',
+    //     system: true // TODO prevent being replaced by a custom provider
+    //     // TODO prevent editing and removal
     // }
 ]
 
-
-const LayoutComponent = withRouter(connect(function ({ session, loading, loadingPage }) { 
-    const { user, userUpdatedAt } = session
-
-    return {
-        loading: !!(loading && loading.length),
-        loadingPage,
+const LayoutComponent = withRouter(connect(function ({ session }) { 
+    const { 
         user,
         userUpdatedAt,
-        providers: [...defaultProviders, ...(user && user.providers || [])]
+        loading
+    } = session
+
+    return {
+        user,
+        userUpdatedAt,
+        loading,  
     } 
 })(function ({ Component, pageProps, ...extraProps }) {
     const drawerWidth = 180 //240
@@ -65,28 +72,32 @@ const LayoutComponent = withRouter(connect(function ({ session, loading, loading
     const theme = useTheme()
     const [mobileOpen, setMobileOpen] = React.useState(false)
     const handleDrawerToggle = () => { setMobileOpen(!mobileOpen) }
+
     const isServer = typeof window === 'undefined'
-    const { dispatch, loading, loadingPage, router  } = extraProps
+    const { dispatch, loading, router  } = extraProps
+    const providers = useMergedProviders(extraProps.user && extraProps.user.providers)
     const parsingQuery = !isServer && !!window.location.search && !Object.keys(router.query).length
     const token = useToken()
-    
 
-    // useScrollTop('#main') // patch scroll to top behavior (note can't opt out)
-    
+    // Reset the scroll to the top of the page when navigating
+    useScrollReset()
+
     // Fetch user session
     useFetchSessionAndStoreUser(dispatch)
     
     // Dispatch loading page events
-    useEffect(()=> DispatchLoadingPageStatus(dispatch), [dispatch])
+    const [, loading_page] = usePageLoading()
+
     useEffect(function () { return function () { console.log('UNMOUNT LAYOUT COMPONENT') } }, [])
-    
-    console.log('RENDER LAYOUT FOR', Component.displayName || Component.name)
+
+    // console.log('RENDER LAYOUT FOR', Component.displayName || Component.name)
+
 
     return <div className={classes.root}>
         <Head>
-            <meta name="viewport" key="viewport" content="width=device-width, initial-scale=1" />
-            <title key="page-title">Loading... | App</title>
-            <meta key="page-description" name="Description" content="Loading... | App"/>
+            <meta name="viewport" key="viewport" content="minimum-scale=1, initial-scale=1, width=device-width" />
+            <title key="page-title">App</title>
+            <meta key="page-description" name="Description" content="App"/>
             <link rel="preconnect" href="https://tmdb.org"></link>
             <link rel="preconnect" href="https://image.tmdb.org"></link>
         </Head>
@@ -99,25 +110,19 @@ const LayoutComponent = withRouter(connect(function ({ session, loading, loading
             <div className={classes.toolbar} />
 
             <div className={classes.content}>
-            {/* Page is loading || Session is being fetched || Parsed query parameters weren't available yet */}
-                { // !isServer && (loadingPage || loading || parsingQuery) && 
-                
-                // <Message style={{
-                //     position: 'absolute',
-                //     width: '100%',
-                //     maxHeight: 'calc(100vh - 48px)'
-                // }}><CircularProgress/></Message> 
-                
-                }
-
+                { loading_page && <LinearProgress /> || null } 
+                <Backdrop className={classes.backdrop} open={!isServer && (loading || parsingQuery)}>
+                    <CircularProgress/>
+                </Backdrop>
                 <Component 
                     parsingQuery={parsingQuery} 
                     {...extraProps} 
+                    providers={providers}
                     {...pageProps}
-                    />
+                />
             </div>
-
-            <CookiePolicy/>
+            
+            { extraProps.user? null : <CookiePolicy/> }
             <Footer/>
             <ScrollTop selector="#back-to-top-anchor">
                 <Fab color="default" size="small" aria-label="scroll back to top">
@@ -153,90 +158,45 @@ function useFetchSessionAndStoreUser (dispatch, _swr_props) {
     useEffect(function () {
         if (swr_error || swr_response) {
             console.log('update session', swr_error && 'Unauthenticated' || swr_response)
+
+            if (swr_error) dispatch(logout())
             
-            batch(()=> {
-                if (swr_error) dispatch(logout())
-                
-                else dispatch(login(swr_response))
-                
-                dispatch(ACTION_LOADING(false, { id: 'LOADING_USER_SESSION' }))
-            })
+            else dispatch(login(swr_response))
+
+            dispatch(setLoading(false))
         } else {
             console.log('fetch session')
-            dispatch(ACTION_LOADING(true, { id: 'LOADING_USER_SESSION', iat: Date.now() })) 
+
+            dispatch(setLoading(false))
         }
     }, [dispatch, swr_error, swr_response])
 }
 
-function DispatchLoadingPageStatus (dispatch) {
-    const routeChangeStart = (url) => batch(()=> {
-        console.log(`routeChangeStart: ${url}`)
-        dispatch(ACTION_LOADING_PAGE(true))
-        dispatch(ACTION_LOADING(true, { id: 'LOADING_PAGE', iat: Date.now() }))
-    })
+// Merge user providers with the default providers
+// Deduplicate providers by id
+function useMergedProviders (_providers, defaults = DEFAULT_PROVIDERS) {
+    return useMemo(function () {    
+        const providers = new Map()
 
-    const routeChangeError = (url) => batch(()=> {
-        console.log(`routeChangeError: ${url}`)
-        dispatch(ACTION_LOADING_PAGE(false))
-        dispatch(ACTION_LOADING(false, { id: 'LOADING_PAGE' }))
-    })
+        defaults.forEach((provider)=> providers.set(provider.id, provider))
     
-    const routeChangeComplete = (url) => batch(()=> {
-        console.log(`routeChangeComplete: ${url}`)
-        dispatch(ACTION_LOADING_PAGE(false))
-        dispatch(ACTION_LOADING(false, { id: 'LOADING_PAGE' }))
-    })
+        if (_providers) _providers.forEach(function (provider) {
+            //// Prevent replacing system providers
 
-    Router.events.on('routeChangeError', routeChangeError)
-    Router.events.on('routeChangeStart', routeChangeStart)
-    Router.events.on('routeChangeComplete', routeChangeComplete)
+            const existing = providers.get(provider.id)
 
-    return function removeListeners () {
-        Router.events.off('routeChangeError', routeChangeError)
-        Router.events.off('routeChangeStart', routeChangeStart)
-        Router.events.off('routeChangeComplete', routeChangeComplete)
-    }
+            if (existing && existing.system) {
+                // console.warn('Failed to replace built-in provider', existing.id)
+                return
+            }
+    
+            providers.set(provider.id, provider)
+        })
+
+        return [...providers.values()].sort((a, b)=> a.id > b.id ? 1 : -1)
+    }, [_providers, defaults])
 }
 
 LayoutComponent.Layout = false
 
 export default LayoutComponent
-
-
-
-
-
-
-
-
-// user? <nav role="navigation">
-// <div>{ user.nickname }</div>
-
-// <img style={{ display: 'block' }} referrerPolicy="same-origin" src={user.picture} width="32" height="32" alt=""></img>
-// {/* <Link key="nav-settings" href={'/settings'}>
-//     <a className="nav-link" role="link" aria-label="Settings" title="Settings" style={{ display: 'block' }}>
-//         Settings
-//     </a>
-// </Link> */}
-
-// <form method="POST" action={'/api/logout?returnTo=' + encodeURIComponent(router.pathname)}>
-//     <input name="_csrf" type="hidden" defaultValue={token}/>
-//     <IconButton 
-//         type="submit"
-//         size="small"
-//         title="Logout"
-//         aria-label="Logout" 
-//         component="button"
-//     >   
-//         <LogoutIcon/>
-//     </IconButton>
-// </form>
-// </nav> : <nav role="navigation">
-// <div aria-hidden="true"></div>
-// <div aria-hidden="true" style={{ width: 32, height: 32 }}></div>
-// <a href="/api/login" role="link" aria-label="Click to proceed to login" title="Login">Login</a>
-// </nav>
-
-
-
-
